@@ -37,7 +37,7 @@ class NetworkUtil {
       }
       return null;
     } on HttpException {
-      if (statusCode < 200 || statusCode > 400 || res == null) {
+      if (statusCode < 200 || statusCode > 400 ) {
         throw  Exception("Error while fetching data");
       }
       return null;
@@ -94,7 +94,7 @@ class NetworkUtil {
       }
       return null;
     } on HttpException {
-      if (statusCode < 200 || statusCode > 400 || res == null) {
+      if (statusCode < 200 || statusCode > 400) {
         throw  Exception("Error while fetching data");
       }
       return null;
@@ -137,7 +137,7 @@ class NetworkUtil {
       final String res = response.body;
       final int statusCode = response.statusCode;
 
-      if (statusCode < 200 || statusCode > 400 || res == null) {
+      if (statusCode < 200 || statusCode > 400) {
         throw  Exception("Error while fetching data");
       }
       return _decoder.convert(res);
@@ -151,7 +151,7 @@ class NetworkUtil {
       final String res = response.body;
       final int statusCode = response.statusCode;
 
-      if (statusCode < 200 || statusCode > 400 || res == null) {
+      if (statusCode < 200 || statusCode > 400 ) {
         throw  Exception("Error while fetching data");
       }
       return _decoder.convert(res);
@@ -172,7 +172,9 @@ class ConnectivityService {
 
   ConnectivityService() {
     // Subscribe to the connectivity Chanaged Steam
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
+    Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> result) {
       // Use Connectivity() here to gather more info if you need t
 
       connectionStatusController.add(_getStatusFromResult(result));
@@ -180,19 +182,18 @@ class ConnectivityService {
   }
 
   // Convert from the third part enum to our own enum
-  ConnectivityStatus _getStatusFromResult(ConnectivityResult result) {
-    switch (result) {
-      case ConnectivityResult.mobile:
-        return ConnectivityStatus.Cellular;
-      case ConnectivityResult.wifi:
-        return ConnectivityStatus.WiFi;
-      case ConnectivityResult.none:
-        return ConnectivityStatus.Offline;
-      default:
-        return ConnectivityStatus.Offline;
+  ConnectivityStatus _getStatusFromResult(List<ConnectivityResult> result) {
+    if (result.contains(ConnectivityResult.mobile)) {
+      return ConnectivityStatus.Cellular;
+    } else if (result.contains(ConnectivityResult.wifi)) {
+      return ConnectivityStatus.WiFi;
+    } else if (result.contains(ConnectivityResult.none)) {
+      return ConnectivityStatus.Offline;
+    } else {
+      return ConnectivityStatus.Offline;
     }
   }
-
 }
+
 
 
