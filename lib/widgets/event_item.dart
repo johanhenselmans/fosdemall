@@ -9,10 +9,10 @@ class EventItem extends StatelessWidget {
   final SettingsController settingsController;
 
   const EventItem({
-    Key? key,
+    super.key,
     required this.event,
     required this.settingsController,
-  }) : super(key: key);
+  });
 
   goHome(BuildContext context) {
     GoRouter.of(context).pushReplacement('/');
@@ -56,20 +56,21 @@ class EventItem extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      event.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    //makeitUTF8Bold(event.title),
+                  Text(
+                  event.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                     Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            'Location: ${event.room}',
+                            'Where: ${event.room}',
                             style: const TextStyle(
                               color: Colors.black,
                               fontWeight: FontWeight.bold,

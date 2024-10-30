@@ -92,6 +92,7 @@ class Event extends ChangeNotifier {
       slug = obj["slug"];
       title = obj['title'];
       subtitle = obj["subtitle"];
+      abstract = obj["abstract"];
       track = obj["track"];
       type = obj["type"];
       language = obj["language"];
@@ -114,7 +115,7 @@ class Event extends ChangeNotifier {
       year = obj['year'];
       eventdate = obj['eventdate'];
       DateFormat datetimeFormat = DateFormat('y-M-d H:m');
-      eventDateInMillis = datetimeFormat.parse('${eventdate} ${start}').millisecondsSinceEpoch;
+      eventDateInMillis = datetimeFormat.parse('$eventdate $start').millisecondsSinceEpoch;
       favorite = obj['favorite'];
 
       // information comes from xml transferred to json: somehow ints are not
@@ -145,10 +146,10 @@ class Event extends ChangeNotifier {
         slug = obj["slug"];
         title = obj['title'];
         subtitle = obj["subtitle"];
+        abstract = obj["abstact"];
         track = obj["track"];
         type = obj["type"];
         language = obj["language"];
-        abstract = obj["abstract"];
         description = obj['description'];
       }
       links = obj["links"];
@@ -156,7 +157,7 @@ class Event extends ChangeNotifier {
       attachments = obj["attachments"];
       eventdate = obj['eventdate'];
       DateFormat datetimeFormat = DateFormat('y-M-d H:m');
-      eventDateInMillis = datetimeFormat.parse("${eventdate} ${start}").millisecondsSinceEpoch;
+      eventDateInMillis = datetimeFormat.parse("$eventdate $start").millisecondsSinceEpoch;
       DateFormat dateFormat = DateFormat('yyyy-MM-dd');
       DateTime time = dateFormat.parse(eventdate!);
       year = time.year;
@@ -170,7 +171,7 @@ class Event extends ChangeNotifier {
   // toMap is using to send info to the database.
   // if the data comes from xml, the localavailable is not filled
   Map<String, dynamic> toMap() {
-    var map = Map<String, dynamic>();
+    var map = <String, dynamic>{};
     map['eventid'] = eventId;
     map['start'] = start;
     map['duration'] = duration;

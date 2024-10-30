@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Preferences {
-  static Preferences _instance = Preferences.internal();
+  static final Preferences _instance = Preferences.internal();
 
   Preferences.internal();
 

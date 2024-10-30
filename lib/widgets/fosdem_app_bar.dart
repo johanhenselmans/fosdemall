@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:fosdem/utils/style.dart';
 import 'dart:ui' as ui;
 
-import 'package:fosdem/widgets/fosdem_back_button.dart';
 
-class FosdemAppBar extends StatefulWidget with PreferredSizeWidget {
+class FosdemAppBar extends StatefulWidget implements PreferredSizeWidget {
   final String title;
   List<Widget>? actions;
   final bool canGoBack;
@@ -12,9 +11,9 @@ class FosdemAppBar extends StatefulWidget with PreferredSizeWidget {
   FosdemAppBar(
     this.title, {
     List<Widget>? actions,
-    Key? key,
+    super.key,
     this.canGoBack = false,
-  }) : super(key: key);
+  });
 
   @override
   Size get preferredSize => Size.fromHeight(AppBar().preferredSize.height);
@@ -51,7 +50,7 @@ class _FosdemAppBarState extends State<FosdemAppBar> {
                 ),
               ),
               */
-
+              Expanded(child:
               SizedBox(
                 //flex: 1,
                 child:
@@ -75,7 +74,7 @@ class _FosdemAppBarState extends State<FosdemAppBar> {
                       ),
                  //   ]),
               ),
-              //Expanded(flex: 1, child: Container()),
+              ),//Expanded(flex: 1, child: Container()),
             ],
           ),
         ),

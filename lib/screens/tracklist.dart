@@ -10,9 +10,9 @@ class TrackList extends StatefulWidget with ChangeNotifier {
   final SettingsController settingsController;
 
   TrackList({
-    Key? key,
+    super.key,
     required this.settingsController,
-  }) : super(key: key);
+  });
 
   static const routeName = '/tracklist';
 
@@ -58,11 +58,13 @@ class _TrackListState extends State<TrackList> {
 // builds Widgets as they’re scrolled into view.
 
   Widget showSearchableList(trackList) {
-    return SearchableList<String>(
-      builder: (String anTrack) => TrackItem(settingsController: widget.settingsController,track: anTrack),
-      loadingWidget: Column(
+    return SearchableList<String>.async(
+      itemBuilder: (String anTrack) {
+        return TrackItem(settingsController: widget.settingsController, track: anTrack);
+      },
+      loadingWidget: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           CircularProgressIndicator(),
           SizedBox(
             height: 20,
@@ -79,7 +81,7 @@ class _TrackListState extends State<TrackList> {
         return trackList;
       },
       asyncListFilter: (q, aList) {
-        return aList.where((element) => element.contains(q)).toList();
+        return aList.where((element) => element.toLowerCase().contains(q.toLowerCase())).toList();
       },
 //      filter: (value) => trackList
 //          .swhere(
@@ -114,7 +116,7 @@ class _TrackListState extends State<TrackList> {
               trackList = snapshot.data;
               return showSearchableList(trackList!);
             } else {
-              return Column(children: const <Widget>[
+              return const Column(children: <Widget>[
                 SizedBox(
                   width: 20,
                   height: 20,
@@ -132,10 +134,10 @@ class TrackItem extends StatelessWidget {
   final SettingsController settingsController;
 
   const TrackItem({
-    Key? key,
+    super.key,
     required this.track,
     required this.settingsController,
-  }) : super(key: key);
+  });
 
   goHome(BuildContext context) {
     GoRouter.of(context).pushReplacement('/');
@@ -193,13 +195,13 @@ class TrackItem extends StatelessWidget {
 }
 
 class EmptyView extends StatelessWidget {
-  const EmptyView({Key? key}) : super(key: key);
+  const EmptyView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return const Column(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: const [
+      children: [
         Icon(
           Icons.error,
           color: Colors.red,

@@ -113,7 +113,7 @@ class Conference {
 
   //this is a mapping to the database
   Map<String, dynamic> toMap() {
-    var map = Map<String, dynamic>();
+    var map = <String, dynamic>{};
     map['title'] = title;
     map['subtitle'] = subtitle;
     map['venue'] = venue;

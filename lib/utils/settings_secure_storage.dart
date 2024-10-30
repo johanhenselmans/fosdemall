@@ -34,10 +34,8 @@ class UserSecureStorage {
 
   static Future<bool?> getSelectedTrackOfAllYears() async {
     var tmpvalue = await _storage.read(key: _keySelectedTrackOffAllYears);
-    if (tmpvalue == null){
-      tmpvalue = "false";
-    }
-    bool value = bool.fromEnvironment(tmpvalue!, defaultValue: false);
+    tmpvalue ??= "false";
+    bool value = bool.fromEnvironment(tmpvalue, defaultValue: false);
     return value;
   }
 
@@ -47,10 +45,8 @@ class UserSecureStorage {
 
   static Future<bool?> getSelectedFavoritesOfAllYears() async {
     var tmpvalue = await _storage.read(key: _keySelectedTrackOffAllYears);
-    if (tmpvalue == null){
-      tmpvalue = "false";
-    }
-    bool value = bool.fromEnvironment(tmpvalue!, defaultValue: false);
+    tmpvalue ??= "false";
+    bool value = bool.fromEnvironment(tmpvalue, defaultValue: false);
     return value;
   }
 
