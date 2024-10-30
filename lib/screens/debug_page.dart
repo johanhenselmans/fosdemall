@@ -12,7 +12,7 @@ import 'package:simple_gesture_detector/simple_gesture_detector.dart';
 class DebugPage extends StatefulWidget with ChangeNotifier {
   SettingsController controller;
 
-  DebugPage({Key? key, required this.controller, this.title}) : super(key: key);
+  DebugPage({super.key, required this.controller, this.title});
 
   static const String routeName = "/debugpage";
 
@@ -101,21 +101,20 @@ class DebugPageState extends State<DebugPage> {
   }
 
   void _goback() {
-    GoRouter.of(context).pop();
+    GoRouter.of(context).pushReplacement('/');
+
+//    GoRouter.of(context).pop();
     //GoRouter.of(context).go('/');
   }
 
   @override
   Widget build(BuildContext context) {
-    String? serverIP;
-    String? serverName;
+    //String? serverIP;
+    //String? serverName;
     return SafeArea(
       child: Scaffold(
-        restorationId: 'debug_page',
+        //restorationId: 'debug_page',
         body: SimpleGestureDetector(
-          //onTap: () {
-          //  _gohome();
-          //},
           onHorizontalSwipe: (SwipeDirection direction) {
             if (direction == SwipeDirection.right) {
               _goback();
@@ -126,19 +125,22 @@ class DebugPageState extends State<DebugPage> {
             horizontalThreshold: 40.0,
             swipeDetectionBehavior: SwipeDetectionBehavior.continuousDistinct,
           ),
-          child: ListView(
+          child:
+          Column(
+            children:[
+          //ListView(
               //padding: const EdgeInsets.only(bottom: kFloatingActionButtonMargin + 38),
-              padding: const EdgeInsets.all(24),
-              children: [
+          //    padding: const EdgeInsets.all(24),
+          //    children: [
                 Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       ElevatedButton(
                         style: fosdemElevatedButtonStyle,
-                        child: Row(
+                        child: const Row(
                           children: [
                             Icon(Icons.arrow_back_outlined),
-                            const Text(
+                            Text(
                               "Back",
                               textAlign: TextAlign.center,
                             ),
@@ -153,11 +155,13 @@ class DebugPageState extends State<DebugPage> {
                   child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.center,
+
                       children: <Widget>[
-                        Expanded(
-                          child: ListView(children: <Widget>[
-                            Padding(
-                              padding: const EdgeInsets.all(20.0),
+                          ListView(
+                              shrinkWrap: true,
+                              children: <Widget>[
+                            const Padding(
+                              padding: EdgeInsets.all(20.0),
                               child: Text(
                                 "This is a debug page for the FOSDEM app}",
                                 textAlign: TextAlign.center,
@@ -195,11 +199,13 @@ class DebugPageState extends State<DebugPage> {
                                   }),
                             ),
                           ]),
-                        ),
+
                       ]),
                 ),
               ]),
-        ),
+       // ]),
+
+      ),
       ),
     );
   }

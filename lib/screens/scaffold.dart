@@ -19,8 +19,8 @@ class FosdemScaffold extends StatelessWidget {
   const FosdemScaffold({
     required this.selectedTab,
     required this.child,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   final ScaffoldTab selectedTab;
 
@@ -28,7 +28,7 @@ class FosdemScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final routeState = GoRouter.of(context).location;
+    final routeState = GoRouterState.of(context).uri.toString();
     final selectedIndex = _getSelectedIndex(routeState);
 
     return Scaffold(
