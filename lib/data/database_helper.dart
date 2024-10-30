@@ -38,7 +38,7 @@ class DatabaseHelper extends ChangeNotifier {
     io.Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, "fosdem.db");
     var theDb = await openDatabase(path,
-        version: 1, onCreate: _onCreate, onUpgrade: _onUpgrade);
+        version: 3, onCreate: _onCreate, onUpgrade: _onUpgrade);
     return theDb;
   }
 
@@ -48,6 +48,8 @@ class DatabaseHelper extends ChangeNotifier {
     //await db.execute("ALTER TABLE Event add column description TEXT");
     //await db.execute("ALTER TABLE Event add column eventdate TEXT");
     //await db.execute("ALTER TABLE Event add column favorite INTEGER");
+    //await db.execute(
+    //    "DELETE from Conference where year is '' or year is 0");
   }
 
   void _onCreate(Database db, int version) async {
@@ -69,18 +71,13 @@ class DatabaseHelper extends ChangeNotifier {
 
   Future<void> putTheConfenceIntoTheDatabase(
       {Conference? conference, int? year}) async {
-    //Find the same Event in the database:
-    //If it is not available, insert the Event
+    //Find the same Conference in the database:
+    //If it is not available, insert the Conference
     final dbClient = await db;
-    if (conference != null) {
+    if (conference != null && conference.year != null) {
       try {
-        //first we check if a group variable is added: that means that this is a generic call to fetch Events
-        //else we have the list of Events that are added for the logged in user.
-        //If the Events are picked up while the user is logged in, the meaning of available == 0
-        //means he is overEvented. Every value above means he is available.
-        //If the user is not logged in, every value > 1 (1= available, 0=unavailable), means not available
         var dbList = await dbClient.query('Conference',
-            where: 'start = ?', whereArgs: [conference.start]);
+            where: 'year = ?', whereArgs: [conference.year]);
         if (dbList.isNotEmpty) {
           Map map = dbList[0];
           // only update Event when there is a new revision or if there is no revision of the current Event
@@ -201,7 +198,8 @@ class DatabaseHelper extends ChangeNotifier {
       if (debug == DebugLevel.All || debug == DebugLevel.Database) {
         print('getConferenceFromDb: ${conf.title!}');
       }
-      listconf.add(conf);
+      if (conf.year != '')
+        listconf.add(conf);
     }
     listconf.sort((a, b) {
       return b.year.toString().compareTo(a.year.toString());
@@ -210,13 +208,13 @@ class DatabaseHelper extends ChangeNotifier {
   }
 
   Future<void> putTheEventListIntoTheDatabase(
-      {List<Event>? events, int? year}) async {
+      {required ConferenceAndEvent confandevents, int? year}) async {
     //Find the same Event in the database:
     //If it is not available, insert the Event
     final dbClient = await db;
-    if (events != null && events.isNotEmpty) {
+    if (confandevents.eventList != null && confandevents.eventList!.isNotEmpty) {
       List<String?> eventIdvalues = [];
-      for (Event anEvent in events) {
+      for (Event anEvent in confandevents.eventList!) {
         try {
           //first we check if a group variable is added: that means that this is a generic call to fetch Events
           //else we have the list of Events that are added for the logged in user.
@@ -243,32 +241,56 @@ class DatabaseHelper extends ChangeNotifier {
           print(error.toString());
         }
       }
-      //remove Events that are not in the internet database anymore, and the files belonging to it
-      String eventIdSinqleQuoteString = eventIdvalues.fold(
-          '', (value, element) => '$value,\'${element!}\'');
-      //print('values: ${Eventcodevalues.toString()}, string: ${EventcodeSinqleQuoteString.substring(1)}');
-      //TODO remove files belonging to Eventcodes that are not there any more
-      // only do this if the if the group was mentioned, otherwise it means that the Events of a logged in user
-      // are picked up. That is not the complete assortiment of Events.
-      if (year != null) {
-        // first select the Events that are not there any more
-        // then delete their assets locally: thumbnail images and audio and image files
-        // the delete  the Events from the database.
-        int res = await dbClient.delete(
-          'Event',
-          where:
-          'eventid not in (${eventIdSinqleQuoteString.substring(1)}) and year = ?',
-          whereArgs: [year],
-        );
+    //remove Events that are not in the internet database anymore, and the files belonging to it
+    String eventIdSinqleQuoteString = eventIdvalues.fold(
+        '', (value, element) => '$value,\'${element!}\'');
+    //print('values: ${Eventcodevalues.toString()}, string: ${EventcodeSinqleQuoteString.substring(1)}');
+    //TODO remove files belonging to Eventcodes that are not there any more
+    // only do this if the if the group was mentioned, otherwise it means that the Events of a logged in user
+    // are picked up. That is not the complete assortiment of Events.
+    if (year != null) {
+      // first select the Events that are not there any more
+      // then delete their assets locally: thumbnail images and audio and image files
+      // the delete  the Events from the database.
+      int res = await dbClient.delete(
+        'Event',
+        where:
+        'eventid not in (${eventIdSinqleQuoteString.substring(1)}) and year = ?',
+        whereArgs: [year],
+      );
 //        int res = await dbClient.delete('Event', where: 'Eventcode not in (${Eventcodevalues.join(',')}) and groupcol = ?', whereArgs: [group],);
 //        int res = await dbClient.delete('Event', where: 'Eventcode not in (?) and groupcol = ?', whereArgs: [EventcodeString.substring(1),group],);
-        if (debug == DebugLevel.All || debug == DebugLevel.Database) {
-          print('Events deleted: $res');
+      if (debug == DebugLevel.All || debug == DebugLevel.Database) {
+        print('Events deleted: $res');
+      }
+    }
+    //TODO: make sure the update of the database is recorded in the prefs, so we can update when the app has not updated for a day.
+    //notifyListeners();
+    }
+
+    if (confandevents.conference != null && confandevents.conference!.year != null) {
+        try {
+          var dbList = await dbClient.query('Conference',
+              where: 'year = ?', whereArgs: [confandevents.conference!.year]);
+          if (dbList.isNotEmpty) {
+            Map map = dbList[0];
+            // only update Event when there is a new revision or if there is no revision of the current Event
+            // or if the avalable status has been changed
+            Conference tmpConference = Conference.fromMapToObject(map);
+            // transfer data that can not be available in the downloaded Eventinfo;
+            await updateConference(tmpConference);
+          } else {
+            await insertConference(confandevents.conference!);
+          }
+        } on Exception catch (exception) {
+          // only executed if error is of type Exception
+          print(exception);
+        } catch (error) {
+          print(error.toString());
         }
       }
-      //TODO: make sure the update of the database is recorded in the prefs, so we can update when the app has not updated for a day.
-      //notifyListeners();
-    }
+
+
   }
 
   Future<int?> insertEvent(Event anEvent) async {
@@ -286,9 +308,6 @@ class DatabaseHelper extends ChangeNotifier {
         _handleError(e);
       }
     });
-    /*
-    int res = await dbClient.insert("Event", Event.toMap());
-   */
     return res;
   }
 
@@ -386,8 +405,8 @@ class DatabaseHelper extends ChangeNotifier {
       if (debug == DebugLevel.All || debug == DebugLevel.Database) {
         print("Got Events and Conferences from Internet and Local Storage");
       }
-      await putTheEventListIntoTheDatabase(events: confandevents.eventList);
-      await putTheConfenceIntoTheDatabase(conference: confandevents.conference);
+      await putTheEventListIntoTheDatabase(confandevents: confandevents);
+//      await putTheConfenceIntoTheDatabase(conference: confandevents.conference);
     }
   }
 
@@ -406,9 +425,9 @@ class DatabaseHelper extends ChangeNotifier {
     if(mapEvent.isEmpty) {
       XMLDatasource xmldatasrc = XMLDatasource();
       ConferenceAndEvent confandevents = await xmldatasrc.getEvents(year.toString());
-      if (confandevents != null && confandevents.eventList!.isNotEmpty){
-        await putTheEventListIntoTheDatabase(events: confandevents.eventList);
-        await putTheConfenceIntoTheDatabase(conference: confandevents.conference);
+      if (confandevents.eventList!.isNotEmpty){
+        await putTheEventListIntoTheDatabase(confandevents: confandevents);
+        //await putTheConfenceIntoTheDatabase(conference: confandevents.conference);
       }
 
     }
@@ -433,7 +452,7 @@ class DatabaseHelper extends ChangeNotifier {
     final dbClient = await db;
     List<String> personNameList = [];
     List<Map<String, Object?>> persons = await dbClient
-        .rawQuery('''select json_extract(person.value, \'\$.\$t\') 
+        .rawQuery('''select json_extract(person.value, '\$.\$t') 
   from (select value from json_each(Event.persons ), 
   Event where eventid = ?) person''', [anEvent.eventId]);
     for (var person in persons) {
@@ -511,6 +530,8 @@ class DatabaseHelper extends ChangeNotifier {
   //The yearlist is only suited for picking up some of the stuff.
   //2007 until 2011 were not delivered in xml format, and have been grazed and converted
   //by hand, sort of, to local assets
+  // As Fosdem is always first week in februari, we can safely assume that in the beginning of the year there will be a conference list setup.
+
   List<int> getYearList() {
     int beginYear = 2007;
     DateTime now = DateTime.now();
