@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="nl.netsense.fosdem">
 
     <!-- The INTERNET permission is required for development. Specifically,
@@ -11,8 +12,8 @@
 
 
     <application
-        android:label="fosdem"
         android:name="${applicationName}"
+        android:label="FOSDEM ORG"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
