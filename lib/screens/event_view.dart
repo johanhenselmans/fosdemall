@@ -1,14 +1,15 @@
+
 import 'package:flutter/material.dart';
-import 'package:flutter_html/flutter_html.dart';
 import 'package:fosdem/data/database_helper.dart';
 import 'package:fosdem/models/event.dart';
 import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/utils/style.dart';
+import 'package:fosdem/utils/utils.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:simple_gesture_detector/simple_gesture_detector.dart';
 import 'package:url_launcher/url_launcher.dart';
-
+import 'package:fosdem/utils/constants.dart';
 /// Displays the various settings that can be customized by the user.
 ///
 /// When a user changes a setting, the SettingsController is updated and
@@ -19,8 +20,7 @@ class EventView extends StatefulWidget with ChangeNotifier {
   SettingsController controller;
   Event event;
 
-  EventView({Key? key, required this.controller, required this.event})
-      : super(key: key);
+  EventView({super.key, required this.controller, required this.event});
   static const routeName = 'eventview';
 
   @override
@@ -32,7 +32,7 @@ class _EventViewState extends State<EventView> {
   String selectedYear = "";
   bool enabled = true;
   DatabaseHelper databaseHelper = DatabaseHelper();
-  List<bool> _selections = [false, false];
+  final List<bool> _selections = [false, false];
 
   @override
   void initState() {
@@ -85,7 +85,7 @@ class _EventViewState extends State<EventView> {
   }
 
   void _gohome() {
-    GoRouter.of(context).pop();
+    GoRouter.of(context).pushReplacement('/');
     //GoRouter.of(context).go('/');
   }
 
@@ -124,39 +124,22 @@ class _EventViewState extends State<EventView> {
     }
   }
 
-/*
-  void onPressed(){
-    if (enabled = false){
-      enabled = true;
-    } else {
-      enabled = false;
-    }
-    setState(() {
-      enabled;
-    });
-  }
-*/
-  Widget checkHTMLContent(String? content) {
-    if (content != null) {
-      var cleancontent = content.replaceAll('\\\\n', '<br/>');
-      return Html(data: cleancontent);
-    } else {
-      return Container();
+  Widget itemContents(Map item){
+    if (item['type'] != null ) {
+      return Text("${item['\$t']} (${item['type']})",
+        style: const TextStyle(color: fosdemColorButtonTekst));
+  } else {
+    return Text("${item['\$t']}",
+    style: const TextStyle(color: fosdemColorButtonTekst));
     }
   }
 
 
   @override
   Widget build(BuildContext context) {
-//    final VoidCallback? onPressed = enabled ? () {} : null;
-//    final ColorScheme colors = Theme.of(context).colorScheme;
-    //});
     return SafeArea(
       child: Scaffold(
         body: SimpleGestureDetector(
-          //onTap: () {
-          //  _gohome();
-          //},
           onHorizontalSwipe: (SwipeDirection direction) {
             if (direction == SwipeDirection.right) {
               _gohome();
@@ -167,52 +150,73 @@ class _EventViewState extends State<EventView> {
             horizontalThreshold: 40.0,
             swipeDetectionBehavior: SwipeDetectionBehavior.continuousDistinct,
           ),
-          child: ListView(
+//          child: Container(
+//            padding: const EdgeInsets.all(24),
+            child:
+          Column(children:[
+            Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+            ElevatedButton(
+            style: fosdemElevatedButtonStyle,
+            child: const Row(
+              children: [
+                Icon(Icons.arrow_back_outlined, color: Colors.white),
+                Text(
+                  "Back",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: fosdemColorButtonTekst),
+                ),
+              ],
+            ),
+            onPressed: () => _gohome(),
+          ),
+            Center(child: ToggleButtons(
+
+                onPressed: (int index) {
+                  widget.event.favorite = index;
+                  databaseHelper.updateEvent(widget.event);
+                  var snackBar = const SnackBar(content: Text(""),);
+                  if (index == 1) {
+                    snackBar = SnackBar(
+                    content: Text('Added "${widget.event
+                        .title}" to favorites'),
+                    duration: const Duration(seconds: 2));
+                      } else {
+                  snackBar = SnackBar(
+                  content: Text('Removed "${widget.event
+                      .title}" from favorites'),
+                  duration: const Duration(seconds: 2));
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                  //
+                  //  displayAlert("Added", "Added ${widget.event
+                  //      .title} to favorites", context);
+                  setState(() {
+                    // The button that is tapped is set to true, and the others to false.
+                    for (int i = 0; i < _selections.length; i++) {
+                      _selections[i] = i == index;
+                    }
+                  });
+                },
+                borderRadius: const BorderRadius.all(Radius.circular(8)),
+                selectedBorderColor: fosdemBlue,
+                selectedColor: Colors.white,
+                fillColor: fosdemBlue,
+                color: fosdemBlue,
+                isSelected: _selections,
+                children: const <Widget>[
+                  Icon(Icons.thumbs_up_down),
+                  Icon(Icons.thumb_up),
+                ]),
+            ),
+          ]),
+
+          Expanded(child:
+          ListView(
             //padding: const EdgeInsets.only(bottom: kFloatingActionButtonMargin + 38),
             padding: const EdgeInsets.all(24),
             children: [
-              Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                  children: [
-                  ElevatedButton(
-                    style: fosdemElevatedButtonStyle,
-                    child: Row(
-                      children: [
-                        Icon(Icons.arrow_back_outlined),
-                        const Text(
-                          "Back",
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                    onPressed: () => _gohome(),
-                  ),
-                  Center(child: ToggleButtons(
-                      onPressed: (int index) {
-                        widget.event.favorite = index;
-                        databaseHelper.updateEvent(widget.event);
-                        setState(() {
-                          // The button that is tapped is set to true, and the others to false.
-                          for (int i = 0; i < _selections.length; i++) {
-                            _selections[i] = i == index;
-                          }
-                        });
-                      },
-                      borderRadius: const BorderRadius.all(Radius.circular(8)),
-                      selectedBorderColor: fosdemBlue,
-                      selectedColor: Colors.white,
-                      fillColor: fosdemBlue,
-                      color: fosdemBlue,
-                      isSelected: _selections,
-                      children: <Widget>[
-                        const Icon(Icons.thumbs_up_down),
-                        const Icon(Icons.thumb_up),
-                      ]),
-                  ),
-                ]),
-
-
               Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
@@ -253,10 +257,15 @@ class _EventViewState extends State<EventView> {
                   physics: const ScrollPhysics(),
                   itemBuilder: (BuildContext context, int index) {
                     final item = getPersonList()[index];
-                    return Column(children: [
-                      Text("${item['\$t']}"),
+                    //final itemUTF8 = latin1.encoder.convert(item['\$t']);
+                    //final itemString = utf8.decode(itemUTF8, allowMalformed: true);
+                    return Wrap(alignment: WrapAlignment.center, children: [
+                      makeitUTF8(item['\$t']),
+                      //Text("${itemString}"),
+                      //Text('and: ${item['\$t']}'),
                     ]);
                   }),
+              checkHTMLContent(widget.event.abstract),
               checkHTMLContent(widget.event.description),
 
               //Text("${widget.event.links}", textAlign: TextAlign.center),
@@ -272,7 +281,7 @@ class _EventViewState extends State<EventView> {
                           _launchUrl(item['href']);
                         },
                         style: fosdemElevatedButtonStyle,
-                        child: Text("${item['\$t']}"),
+                        child: Text("${item['\$t']}", style: const TextStyle(color: fosdemColorButtonTekst),),
                       )
                       //Text("${item['href']}"),
                       //Text("${item['\$t']}"),
@@ -291,7 +300,9 @@ class _EventViewState extends State<EventView> {
                         onPressed: () {
                           _launchUrl(item['href']);
                         },
-                        child: Text("${item['\$t']} (${item['type']})"),
+                        child: itemContents(item),
+//                        child: Text("${item['\$t']} (${item['type']})", style: TextStyle(color: fosdemColorButtonTekst),),
+//                        child: Text("${item['\$t']}", style: TextStyle(color: fosdemColorButtonTekst),),
                       ),
                       //Text("${item['type']}"),
                       //Text("${item['href']}"),
@@ -300,8 +311,13 @@ class _EventViewState extends State<EventView> {
                   }),
             ],
           ),
-        ),
-      ),
+          )
+        ]),
+
+      )
+
+//    ),
+    ),
     );
   }
 }
