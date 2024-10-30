@@ -12,9 +12,9 @@ class EventList extends StatefulWidget with ChangeNotifier {
   final SettingsController settingsController;
 
   EventList({
-    Key? key,
+    super.key,
     required this.settingsController,
-  }) : super(key: key);
+  });
   static const routeName = '/eventlist';
 
   @override
@@ -24,11 +24,15 @@ class EventList extends StatefulWidget with ChangeNotifier {
 class _EventListState extends State<EventList> {
   DatabaseHelper databaseHelper = DatabaseHelper();
   List<Event>? eventList = [];
+  final TextEditingController _controller = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     widget.settingsController.addListener(_handleSettingsChanged);
+    //if(widget.settingsController.searchEvent.isNotEmpty){
+    //  _controller.text = widget.settingsController.searchEvent;
+    //}
   }
 
 
@@ -86,13 +90,14 @@ class _EventListState extends State<EventList> {
 // builds Widgets as they’re scrolled into view.
 
   Widget showSearchableList(eventList) {
-    return SearchableList<Event>(
-
+    return SearchableList<Event>.async(
       //initialList: eventList,
-      builder: (Event anEvent) => EventItem(settingsController: widget.settingsController, event: anEvent),
-      loadingWidget: Column(
+      itemBuilder: (Event anEvent) {
+        return   EventItem(settingsController: widget.settingsController, event: anEvent);
+      },
+      loadingWidget: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           CircularProgressIndicator(),
           SizedBox(
             height: 20,
@@ -106,9 +111,10 @@ class _EventListState extends State<EventList> {
           ),
         );
         return eventList;
-      },asyncListFilter: (q, aList) {
+      },asyncListFilter: (query, aList) {
+        //widget.settingsController.updateSearchEvent(query);
         return aList
-            .where((element) => element.title.contains(q))
+            .where((element) => element.title.toLowerCase().contains(query.toLowerCase()))
             .toList();
       },
 //      filter: (value) => eventList
@@ -118,12 +124,13 @@ class _EventListState extends State<EventList> {
 //          .toList(),
       onItemSelected: (Event item) {},
       emptyWidget: const EmptyView(),
+      //searchTextController: _controller,
 
-      inputDecoration: InputDecoration(
+      inputDecoration: const InputDecoration(
         labelText: "Search Events",
         fillColor: Colors.white,
         focusedBorder: OutlineInputBorder(
-          borderSide: const BorderSide(
+          borderSide: BorderSide(
             color: Colors.blue,
             width: 1.0,
           ),
@@ -144,7 +151,7 @@ class _EventListState extends State<EventList> {
               eventList = snapshot.data;
               return showSearchableList(eventList!);
             } else {
-              return Column(children: const <Widget>[
+              return const Column(children: <Widget>[
                 SizedBox(
                   width: 30,
                   height: 30,

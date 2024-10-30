@@ -11,9 +11,9 @@ class FavoritesList extends StatefulWidget with ChangeNotifier {
   final SettingsController settingsController;
 
   FavoritesList({
-    Key? key,
+    super.key,
     required this.settingsController,
-  }) : super(key: key);
+  });
 
   static const routeName = '/favoriteslist';
 
@@ -59,12 +59,14 @@ class _FavoritesListState extends State<FavoritesList> {
 // builds Widgets as they’re scrolled into view.
 
   Widget showSearchableList(eventList) {
-    return SearchableList<Event>(
+    return SearchableList<Event>.async(
       //initialList: eventList,
-      builder: (Event anEvent) => EventItem(settingsController: widget.settingsController, event: anEvent),
-      loadingWidget: Column(
+      itemBuilder: ( Event aEvent)  {
+        return EventItem(settingsController: widget.settingsController, event: aEvent);
+      },
+      loadingWidget: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           CircularProgressIndicator(),
           SizedBox(
             height: 20,
@@ -91,11 +93,11 @@ class _FavoritesListState extends State<FavoritesList> {
       onItemSelected: (Event item) {},
       emptyWidget: const EmptyView(),
 
-      inputDecoration: InputDecoration(
+      inputDecoration: const InputDecoration(
         labelText: "Search Events",
         fillColor: Colors.white,
         focusedBorder: OutlineInputBorder(
-          borderSide: const BorderSide(
+          borderSide: BorderSide(
             color: Colors.blue,
             width: 1.0,
           ),
@@ -116,7 +118,7 @@ class _FavoritesListState extends State<FavoritesList> {
               eventList = snapshot.data;
               return showSearchableList(eventList!);
             } else {
-              return Column(children: const <Widget>[
+              return const Column(children: <Widget>[
                 SizedBox(
                   width: 60,
                   height: 60,
