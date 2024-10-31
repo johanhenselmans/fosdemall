@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/utils/style.dart';
+import 'package:fosdem/utils/constants.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -13,13 +14,14 @@ import 'package:package_info_plus/package_info_plus.dart';
 class SettingsView extends StatefulWidget with ChangeNotifier {
   SettingsController controller;
 
-  SettingsView({Key? key, required this.controller}) : super(key: key);
+  SettingsView({super.key, required this.controller});
 
   @override
   _SettingsViewState createState() => _SettingsViewState();
 }
 
 class _SettingsViewState extends State<SettingsView> {
+
   String currentYear = "";
   String selectedYear = "";
   bool isFavoritesChecked = false;
@@ -88,6 +90,9 @@ class _SettingsViewState extends State<SettingsView> {
 
   @override
   Widget build(BuildContext context) {
+    DateTime now = DateTime.now();
+    String lastYear = now.year.toString();
+
     //});
     return ListView(
       //padding: const EdgeInsets.only(bottom: kFloatingActionButtonMargin + 38),
@@ -103,9 +108,9 @@ class _SettingsViewState extends State<SettingsView> {
         const SizedBox(
           height: 20,
         ),
-        const Text("\nLaatste Fosdem:",
+        Text("Last Fosdem: $lastYear",
             textAlign: TextAlign.center,
-            style: TextStyle(fontWeight: FontWeight.bold)),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
         Text("Current Fosdem: ${widget.controller.fosdemCurrentYear}",
             textAlign: TextAlign.center),
         ElevatedButton(
@@ -113,6 +118,7 @@ class _SettingsViewState extends State<SettingsView> {
           child: const Text(
             "Go To Current FosDem",
             textAlign: TextAlign.center,
+            style: TextStyle(color: fosdemColorButtonTekst)
           ),
           onPressed: () => gotoCurrentConference(),
         ),
@@ -120,7 +126,7 @@ class _SettingsViewState extends State<SettingsView> {
           height: 20,
         ),
         CheckboxListTile(
-            title: Text("Display favorites of all years in the favorites list"),
+            title: const Text("Display favorites of all years in the favorites list"),
             value: isFavoritesChecked,
             onChanged: (bool? value) {
               setState(() {
@@ -136,7 +142,7 @@ class _SettingsViewState extends State<SettingsView> {
           height: 20,
         ),
         CheckboxListTile(
-            title: Text("Display tracks of all years in the tracks list"),
+            title: const Text("Display tracks of all years in the tracks list"),
             value: isTracksChecked,
             onChanged: (bool? value) {
               setState(() {
@@ -160,10 +166,10 @@ class _SettingsViewState extends State<SettingsView> {
                 if (snapshot.hasData) {
                   PackageInfo? packageInfo = snapshot.data;
                   return Column(children: [
-                    Text('App: ${packageInfo!.appName}'),
-                    Text('Package: ${packageInfo!.packageName}'),
+                    Text("App: ${packageInfo!.appName}"),
+                    Text("Package: ${packageInfo.packageName}"),
                     Text(
-                        'Version:  ${packageInfo.version}, build ${packageInfo.buildNumber}'),
+                        "Version:  ${packageInfo.version}, build ${packageInfo.buildNumber}"),
                   ]);
                 } else if (snapshot.hasError) {
                   return const Text('I could not find a version of the app');

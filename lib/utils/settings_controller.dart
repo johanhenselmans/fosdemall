@@ -26,6 +26,10 @@ class SettingsController with ChangeNotifier {
   String get fosdemSelectedYear => _fosdemSelectedYear;
   late String _fosdemCurrentYear;
   String get fosdemCurrentYear => _fosdemCurrentYear;
+  late String _searchEvent = '';
+  String get searchEvent => _searchEvent;
+  late final String _searchTrack = '';
+  String get searchTrack => _searchTrack;
   late Event _SelectedEvent;
   Event get SelectedEvent => _SelectedEvent;
   late String _SelectedVideo;
@@ -51,6 +55,23 @@ class SettingsController with ChangeNotifier {
     _selectedFavoritesFromAllYears = (await _settingsService.getSelectedFavoritesOffAllYears())!;
     notifyListeners();
   }
+
+  /// Update and persist the seearchEvent.
+  Future<void> updateSearchEvent(String? anEvent) async {
+    if (anEvent == null) return;
+    //if (newFosdemPassword == null) return;
+
+    // Otherwise, store the new fosdemWifiName in memory
+    _searchEvent = anEvent;
+
+    // Important! Inform listeners a change has occurred.
+    notifyListeners();
+
+    // Persist the changes to a local database or the internet using the
+    // SettingService.
+    //await _settingsService.updateSelectedYear(aYear);
+  }
+
 
   /// Update and persist the ThemeMode based on the user's selection.
   Future<void> updateThemeMode(ThemeMode? newThemeMode) async {
