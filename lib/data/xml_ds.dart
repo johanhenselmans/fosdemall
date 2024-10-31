@@ -151,9 +151,10 @@ class XMLDatasource {
     if (int.parse(year) < currentYear && int.parse(year) >= LOCALYEAR) {
       mainURL = ARCHIVEURL;
     }
+    //Some of the conferences can not be read from the archive online. These have been stored locally in assets/schedule/fosdem_schedule$year.xml
     if (int.parse(year) < REMOTEYEAR){
       final xmlTransformer = Xml2Json();
-      String scheduleasset = "assets/schedule/fosdem_schedule${year}.xml"; //path to asset
+      String scheduleasset = "assets/schedule/fosdem_schedule$year.xml"; //path to asset
       String scheduleString = await rootBundle.loadString(scheduleasset); //load schedyles from assets
       xmlTransformer.parse(scheduleString);
       var json = xmlTransformer.toGData();
@@ -178,9 +179,10 @@ class XMLDatasource {
             print(response.toString());
           }
           return transformConferenceAndEvent(response);
+        } else {
+          List<Event> eventList =[];
+          return ConferenceAndEvent(Conference("","",""), eventList);
         }
-        List<Event> eventList =[];
-        return ConferenceAndEvent(Conference("","",""), eventList);
       });
     }
   }
