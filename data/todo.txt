@@ -1,4 +1,7 @@
 Make sure downloading from data leads to refresh of list of conferences
-Add favorite to EVentItem
-Check Chromecast,  not working properly
-Only use VLC Player on Android and IOS, otherwise launch_url
+*Add favorite to EventItem
+Check Chromecast,  not working properly al the time
+*Only use VLC Player on Android and IOS, otherwise launch_url
+make links from speakers to profiles: https://archive.fosdem.org/2018/schedule/speaker/simon_phipps/
+create keystore for upload keystore:
+keytool -genkey -v -keystore ~/fosdemupload.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias fosdemupload
