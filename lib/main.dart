@@ -17,6 +17,7 @@ import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/utils/settings_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:media_kit/media_kit.dart';                      // Provides [Player], [Media], [Playlist] etc.
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +35,11 @@ void main() async {
 //  XMLDatasource datasource = XMLDatasource();
 //  await datasource.getEvents(MAINURL, currentyear.toString());
   DatabaseHelper dbhelper = DatabaseHelper();
-  await dbhelper.updateEventsFromInternet(year: currentyear.toString());
+  WidgetsFlutterBinding.ensureInitialized();
+  // Necessary initialization for package:media_kit.
+  MediaKit.ensureInitialized();
+
+  dbhelper.updateEventsFromInternet(year: currentyear.toString());
   runApp(
     MultiProvider(
       providers: [
@@ -55,6 +60,7 @@ void main() async {
             }),
       ],
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         home: App(settingsController: settingsController),
       ),
     ),
@@ -65,9 +71,9 @@ class App extends StatefulWidget {
   final SettingsController settingsController;
 
   const App({
-    Key? key,
+    super.key,
     required this.settingsController,
-  }) : super(key: key);
+  });
 
   @override
   _AppState createState() => _AppState();
@@ -112,7 +118,7 @@ class _AppState extends State<App> {
       title: 'Fosdem',
       debugShowCheckedModeBanner: false,
       restorationScopeId: 'app',
-      localizationsDelegates: const [
+      localizationsDelegates:  const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
@@ -133,7 +139,7 @@ class _AppState extends State<App> {
             '/:tab(eventlist|favoriteslist|tracklist|conferencelist|settings)',
         pageBuilder: (BuildContext context, GoRouterState state) {
           final tab = ScaffoldTab.values.firstWhere(
-              (e) => e.toString() == 'ScaffoldTab.${state.params['tab']!}');
+              (e) => e.toString() == 'ScaffoldTab.${state.pathParameters['tab']!}');
           final selectedTabPage = _getSelectedTabPage(tab);
           return MaterialPage<void>(
             key: state.pageKey,
@@ -174,7 +180,7 @@ class _AppState extends State<App> {
     ],
     // redirect to the login page if the user is not logged in
     redirect: (BuildContext context, GoRouterState state) {
-      if (state.location == '' || state.location == '/') {
+      if (state.uri.toString() == '' || state.uri.toString() == '/') {
         return '/eventlist';
       }
       // no need to redirect at all
