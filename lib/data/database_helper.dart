@@ -198,8 +198,9 @@ class DatabaseHelper extends ChangeNotifier {
       if (debug == DebugLevel.All || debug == DebugLevel.Database) {
         print('getConferenceFromDb: ${conf.title!}');
       }
-      if (conf.year != '')
+      if (conf.year != '') {
         listconf.add(conf);
+      }
     }
     listconf.sort((a, b) {
       return b.year.toString().compareTo(a.year.toString());

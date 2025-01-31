@@ -44,7 +44,7 @@ class _ViewVideoState extends State<ViewVideo> {
       aheight = MediaQuery.of(context).size.height * 11 / 13.0;
     }else {
       aheight = MediaQuery.of(context).size.width * 9.0 / 16.0;
-    };
+    }
     return SafeArea(
       child: Scaffold(
         body: Column(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
