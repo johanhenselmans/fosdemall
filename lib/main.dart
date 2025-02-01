@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -18,6 +20,7 @@ import 'package:fosdem/utils/settings_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:media_kit/media_kit.dart';                      // Provides [Player], [Media], [Playlist] etc.
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +37,13 @@ void main() async {
   await settingsController.updateSelectedYear(currentyear.toString());
 //  XMLDatasource datasource = XMLDatasource();
 //  await datasource.getEvents(MAINURL, currentyear.toString());
+  if (Platform.isWindows || Platform.isLinux) {
+    // Initialize FFI
+    sqfliteFfiInit();
+  }
+  // Change the default factory. On iOS/Android, if not using `sqlite_flutter_lib` you can forget
+  // this step, it will use the sqlite version available on the system.
+  databaseFactory = databaseFactoryFfi;
   DatabaseHelper dbhelper = DatabaseHelper();
   WidgetsFlutterBinding.ensureInitialized();
   // Necessary initialization for package:media_kit.

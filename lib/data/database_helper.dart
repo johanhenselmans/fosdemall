@@ -469,7 +469,7 @@ class DatabaseHelper extends ChangeNotifier {
     if(controller.selectedFavoritesFromAllYears == true){
       mapEvent = await dbClient
           .query(
-          'Event', where: 'favorite = 1', whereArgs: []);
+          'Event', where: 'favorite = 1 order by eventdate', whereArgs: []);
     } else {
       mapEvent = await dbClient
           .query(
@@ -485,6 +485,9 @@ class DatabaseHelper extends ChangeNotifier {
       aEvent.year = year;
       listEvent.add(aEvent);
     }
+    listEvent.sort((a, b) {
+      return a.eventDateInMillis.compareTo(b.eventDateInMillis);
+    });
     return listEvent;
   }
 
