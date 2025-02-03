@@ -26,6 +26,7 @@ class _SettingsViewState extends State<SettingsView> {
   String selectedYear = "";
   bool isFavoritesChecked = false;
   bool isTracksChecked = false;
+  bool isNowChecked = false;
 
   int _tapcount = 0;
 
@@ -35,6 +36,7 @@ class _SettingsViewState extends State<SettingsView> {
     widget.controller.addListener(_handleSettingsChanged);
     isFavoritesChecked = widget.controller.selectedFavoritesFromAllYears;
     isTracksChecked = widget.controller.selectedTracksFromAllYears;
+    isNowChecked = widget.controller.selectedNow;
   }
 
   @override
@@ -51,6 +53,7 @@ class _SettingsViewState extends State<SettingsView> {
     selectedYear = widget.controller.fosdemSelectedYear;
     isFavoritesChecked = widget.controller.selectedFavoritesFromAllYears;
     isTracksChecked = widget.controller.selectedTracksFromAllYears;
+    isNowChecked = widget.controller.selectedNow;
     setState(() {});
   }
 
@@ -122,6 +125,22 @@ class _SettingsViewState extends State<SettingsView> {
           ),
           onPressed: () => gotoCurrentConference(),
         ),
+        const SizedBox(
+          height: 20,
+        ),
+        CheckboxListTile(
+            title: const Text("Display events starting from now"),
+            value: isNowChecked,
+            onChanged: (bool? value) {
+              setState(() {
+                isNowChecked = value!;
+              });
+              if (isNowChecked) {
+                widget.controller.updateNow(true);
+              } else {
+                widget.controller.updateNow(false);
+              }
+            }),
         const SizedBox(
           height: 20,
         ),

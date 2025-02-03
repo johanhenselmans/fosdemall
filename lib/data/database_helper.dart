@@ -10,6 +10,7 @@ import 'package:fosdem/utils/settings_controller.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sprintf/sprintf.dart';
 
 // inspired by https://github.com/udara94/flutterTodo
 // and https://flutter.dev/docs/cookEvent/persistence/sqlite
@@ -411,16 +412,47 @@ class DatabaseHelper extends ChangeNotifier {
     }
   }
 
-  Future<List<Event>> getEventsFromDb(int year, {String? track}) async {
+  Future<List<Event>> getEventsFromDb(int year, bool selectedNow,{String? track}) async {
+    DateTime now = DateTime.now();
+    int currentYear = now.year;
+    String currentDate = sprintf("%04d-%02d-%02d",[now.year, now.month, now.day] );
+      String currentStart = sprintf("%02d:%02d",[now.hour, now.minute]);
+
+
     final dbClient = await db;
-    List<Map> mapEvent =[];
-    if (track != ""){
-      mapEvent =
-      await dbClient.query('Event', where: 'year = ? and track like ?', whereArgs: [year, track]);
+    List<Map> mapEvent = [];
+    if (track != "") {
+      if (selectedNow == true) {
+        mapEvent =
+        await dbClient.query('Event',
+            where: 'year = ? and track like ? and eventdate >= ? and start >= ?',
+            whereArgs: [
+              year,
+              track,
+              '$currentDate',
+              '$currentStart'
+            ]);
+      } else {
+        mapEvent =
+        await dbClient.query('Event', where: 'year = ? and track like ?',
+            whereArgs: [year, track]);
+      }
     } else {
-     mapEvent =
-      await dbClient.query('Event', where: 'year = ?', whereArgs: [year]);
+      if (selectedNow == true) {
+        mapEvent =
+        await dbClient.query('Event',
+            where: 'year = ? and eventdate >= ? and start >= ?',
+            whereArgs: [
+              year,
+              '$currentDate',
+              '$currentStart'
+            ]);
+      } else {
+        mapEvent =
+        await dbClient.query('Event', where: 'year = ?', whereArgs: [year]);
+      }
     }
+
     // This should not happen. If it did, something went wrong gettings the events from
     // the schedulefiles or from the internet.
     if(mapEvent.isEmpty) {
@@ -469,11 +501,11 @@ class DatabaseHelper extends ChangeNotifier {
     if(controller.selectedFavoritesFromAllYears == true){
       mapEvent = await dbClient
           .query(
-          'Event', where: 'favorite = 1 order by eventdate', whereArgs: []);
+          'Event', where: 'favorite = 1', whereArgs: []);
     } else {
       mapEvent = await dbClient
           .query(
-          'Event', where: 'year = ? and favorite = 1', whereArgs: [year]);
+          'Event', where: 'year = ? and favorite = 1 ', whereArgs: [year]);
     }
     List<Event> listEvent = [];
     for (var map in mapEvent) {
@@ -491,11 +523,11 @@ class DatabaseHelper extends ChangeNotifier {
     return listEvent;
   }
 
-  Future<List<Event>> getEventList(int year) {
+  Future<List<Event>> getEventList(int year, SettingsController controller) async {
     DatabaseHelper databaseHelper = DatabaseHelper();
     databaseHelper.updateEventsFromInternet(year: year.toString());
     List<Event> tmpEventList = [];
-    return databaseHelper.getEventsFromDb(year).then((value) {
+    return databaseHelper.getEventsFromDb(year, controller.selectedNow).then((value) {
       tmpEventList = value;
       return tmpEventList;
     });
@@ -510,10 +542,20 @@ class DatabaseHelper extends ChangeNotifier {
           '''select track from Event group by track order by track ASC ''',
           []);
     } else {
-      mapTracks = await dbClient.rawQuery(
-          '''select track from Event where year is ?  group by track order by track ASC ''',
-          [year]);
-
+      if (controller.selectedNow == true) {
+        DateTime now = DateTime.now();
+        mapTracks = await dbClient.rawQuery(
+            '''select track from Event where year is ? and eventdate >= ? and start >= ? group by track order by track ASC ''',
+            [
+              year,
+              sprintf("%04d-%02d-%02d",[now.year, now.month, now.day] ),
+            sprintf("%02d:%02d",[now.hour, now.minute])
+            ]);
+      } else {
+        mapTracks = await dbClient.rawQuery(
+            '''select track from Event where year is ? group by track order by track ASC ''',
+            [year]);
+      }
     }
     List<String> listTracks = [];
     //If only the curent Events are loaded, get all the older ones.

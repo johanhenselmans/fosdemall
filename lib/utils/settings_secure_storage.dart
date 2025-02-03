@@ -7,6 +7,7 @@ class UserSecureStorage {
   static const _keyCurrentYear = 'currentyear';
   static const _keySelectedTrackOffAllYears = 'selectedtracksofallyears';
   static const _keySelectedFavoritesOffAllYears = 'selectedfavoritesofallyears';
+  static const _keyNow = 'now';
 
 
 
@@ -50,5 +51,15 @@ class UserSecureStorage {
     return value;
   }
 
+  static Future setNow(bool value) async {
+    await _storage.write(key: _keyNow, value: value.toString());
+  }
+
+  static Future<bool?> getNow() async {
+    var tmpvalue = await _storage.read(key: _keyNow);
+    tmpvalue ??= "false";
+    bool value = bool.fromEnvironment(tmpvalue, defaultValue: false);
+    return value;
+  }
 
 }

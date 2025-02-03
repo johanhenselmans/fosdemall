@@ -74,10 +74,10 @@ class _EventListState extends State<EventList> {
     List<Event> eventList = [];
     if(widget.settingsController.SelectedTrack != ""){
       eventList = await databaseHelper.getEventsFromDb(
-          int.parse(widget.settingsController.fosdemSelectedYear), track: widget.settingsController.SelectedTrack );
+          int.parse(widget.settingsController.fosdemSelectedYear),widget.settingsController.selectedNow, track: widget.settingsController.SelectedTrack );
     } else {
       eventList = await databaseHelper.getEventsFromDb(
-          int.parse(widget.settingsController.fosdemSelectedYear), track: "");
+          int.parse(widget.settingsController.fosdemSelectedYear),widget.settingsController.selectedNow, track: "");
     }
     return eventList;
   }

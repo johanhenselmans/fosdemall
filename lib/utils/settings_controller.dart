@@ -40,6 +40,8 @@ class SettingsController with ChangeNotifier {
   bool get selectedTracksFromAllYears => _selectedTracksFromAllYears;
   bool _selectedFavoritesFromAllYears = false;
   bool get selectedFavoritesFromAllYears => _selectedFavoritesFromAllYears;
+  bool _selectedNow = false;
+  bool get selectedNow => _selectedNow;
 
   /// Load the user's settings from the SettingsService. It may load from a
   /// local database or the internet. The controller only knows it can load the
@@ -53,6 +55,7 @@ class SettingsController with ChangeNotifier {
     // Important! Inform listeners a change has occurred.
     _selectedTracksFromAllYears = (await _settingsService.getSelectedTracksOffAllYears())!;
     _selectedFavoritesFromAllYears = (await _settingsService.getSelectedFavoritesOffAllYears())!;
+    _selectedNow = (await _settingsService.getNow())!;
     notifyListeners();
   }
 
@@ -199,6 +202,20 @@ class SettingsController with ChangeNotifier {
     // Persist the changes to a local database or the internet using the
     // SettingService.
     await _settingsService.updateSelectedFavoritesOffAllYears(aBool);
+  }
+
+  Future<void> updateNow(bool? aBool) async {
+    if (aBool == null) return;
+
+    // Otherwise, store the new value in memory
+    _selectedNow = aBool;
+
+    // Important! Inform listeners a change has occurred.
+    notifyListeners();
+
+    // Persist the changes to a local database or the internet using the
+    // SettingService.
+    await _settingsService.updateNow(aBool);
   }
 
 

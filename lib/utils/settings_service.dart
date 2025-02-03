@@ -63,5 +63,16 @@ class SettingsService {
     UserSecureStorage.setSelectedFavoritesOfAllYears(avalue);
   }
 
+  Future<bool?> getNow() async {
+    return UserSecureStorage.getSelectedFavoritesOfAllYears();
+  }
+
+  /// Persists the user's preferred ThemeMode to local or remote storage.
+  Future<void> updateNow(bool avalue) async {
+    // Use the shared_preferences package to persist settings locally or the
+    // http package to persist settings over the network.
+    UserSecureStorage.setNow(avalue);
+  }
+
 
 }
