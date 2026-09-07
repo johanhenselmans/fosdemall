@@ -21,10 +21,12 @@ class ConferenceList extends StatefulWidget {
 class _ConferenceListState extends State<ConferenceList> {
   final DatabaseHelper databaseHelper = DatabaseHelper();
   List<Conference>? conferenceList = [];
+  late Future<List<Conference>> _conferenceFuture;
 
   @override
   void initState() {
     super.initState();
+    _conferenceFuture = databaseHelper.getConferencesFromDb();
     databaseHelper.addListener(_handleDatabaseChanged);
   }
 
@@ -35,33 +37,11 @@ class _ConferenceListState extends State<ConferenceList> {
   }
 
   void _handleDatabaseChanged() {
-    setState(() {});
-  }
-
-  void _displayAlert(String aText, BuildContext context) {
-    var alert = AlertDialog(
-      title: const Text("Error"),
-      content: Text(aText),
-      actions: <Widget>[
-        TextButton(
-          child: const Text('OK'),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-        ),
-      ],
-    );
-    showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return alert;
-        });
-  }
-
-  Future<List<Conference>> getConferenceList() async {
-    List<Conference> conferenceList =
-        await databaseHelper.getConferencesFromDb();
-    return conferenceList;
+    if (mounted) {
+      setState(() {
+        _conferenceFuture = databaseHelper.getConferencesFromDb();
+      });
+    }
   }
 
   void goHome(BuildContext context) {
@@ -78,7 +58,7 @@ class _ConferenceListState extends State<ConferenceList> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: FutureBuilder<List<Conference>>(
-          future: getConferenceList(),
+          future: _conferenceFuture,
           builder:
               (BuildContext context, AsyncSnapshot<List<Conference>> snapshot) {
             if (snapshot.hasData) {

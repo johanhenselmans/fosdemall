@@ -169,7 +169,7 @@ class _ViewVideoState extends State<ViewVideo> {
                                 ElevatedButton(
                                   style: fosdemElevatedButtonStyle,
                                   onPressed: _launchExternal,
-                                  child: const Text("Open Video Externally"),
+                                  child: const Text("Open Video Externally", style: TextStyle(color: fosdemColorButtonTekst) ),
                                 ),
                               ],
                             ),
