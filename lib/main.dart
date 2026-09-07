@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:fosdem/data/database_helper.dart';
 import 'package:fosdem/models/event.dart';
@@ -19,8 +18,9 @@ import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/utils/settings_service.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:media_kit/media_kit.dart';                      // Provides [Player], [Media], [Playlist] etc.
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+//import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,17 +37,15 @@ void main() async {
   await settingsController.updateSelectedYear(currentyear.toString());
 //  XMLDatasource datasource = XMLDatasource();
 //  await datasource.getEvents(MAINURL, currentyear.toString());
-  if (Platform.isWindows || Platform.isLinux) {
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)  {
     // Initialize FFI
     sqfliteFfiInit();
+    // Change the default factory. On iOS/Android, if not using `sqlite_flutter_lib` you can forget
+    // this step, it will use the sqlite version available on the system.
+    databaseFactory = databaseFactoryFfi;
   }
-  // Change the default factory. On iOS/Android, if not using `sqlite_flutter_lib` you can forget
-  // this step, it will use the sqlite version available on the system.
-  databaseFactory = databaseFactoryFfi;
   DatabaseHelper dbhelper = DatabaseHelper();
   WidgetsFlutterBinding.ensureInitialized();
-  // Necessary initialization for package:media_kit.
-  MediaKit.ensureInitialized();
 
   dbhelper.updateEventsFromInternet(year: currentyear.toString());
   runApp(
@@ -128,16 +126,8 @@ class _AppState extends State<App> {
       title: 'Fosdem',
       debugShowCheckedModeBanner: false,
       restorationScopeId: 'app',
-      localizationsDelegates:  const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [
-        Locale('en', ''), // English, no country code
-        Locale('nl', ''), // Dutch, no country code
-      ],
+      localizationsDelegates:  AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
     );
   }
 
@@ -154,7 +144,11 @@ class _AppState extends State<App> {
           return MaterialPage<void>(
             key: state.pageKey,
             // 3
-            child: FosdemScaffold(selectedTab: tab, child: selectedTabPage),
+            child: FosdemScaffold(
+              selectedTab: tab,
+              settingsController: widget.settingsController,
+              child: selectedTabPage,
+            ),
           );
         },
         routes: <RouteBase>[
