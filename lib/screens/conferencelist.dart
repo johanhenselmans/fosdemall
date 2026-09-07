@@ -7,13 +7,36 @@ import 'package:fosdem/data/database_helper.dart';
 import 'package:fosdem/models/conference.dart';
 import 'package:simple_gesture_detector/simple_gesture_detector.dart';
 
-/// Displays a list of SampleItems.
-class ConferenceList extends StatelessWidget with ChangeNotifier {
-  ConferenceList({super.key, required this.settingsController, required});
+/// Displays a list of Conferences.
+class ConferenceList extends StatefulWidget {
+  const ConferenceList({super.key, required this.settingsController});
 
   static const routeName = '/conferencelist';
   final SettingsController? settingsController;
+
+  @override
+  State<ConferenceList> createState() => _ConferenceListState();
+}
+
+class _ConferenceListState extends State<ConferenceList> {
   final DatabaseHelper databaseHelper = DatabaseHelper();
+  List<Conference>? conferenceList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    databaseHelper.addListener(_handleDatabaseChanged);
+  }
+
+  @override
+  void dispose() {
+    databaseHelper.removeListener(_handleDatabaseChanged);
+    super.dispose();
+  }
+
+  void _handleDatabaseChanged() {
+    setState(() {});
+  }
 
   void _displayAlert(String aText, BuildContext context) {
     var alert = AlertDialog(
@@ -41,31 +64,18 @@ class ConferenceList extends StatelessWidget with ChangeNotifier {
     return conferenceList;
   }
 
-// To work with lists that may contain a large number of items, it’s best
-// to use the ListView.builder constructor.
-//
-// In contrast to the default ListView constructor, which requires
-// building all Widgets up front, the ListView.builder constructor lazily
-// builds Widgets as they’re scrolled into view.
-  List<Conference>? conferenceList = [];
-
-  goHome(BuildContext context) {
+  void goHome(BuildContext context) {
     GoRouter.of(context).pushReplacement('/');
   }
 
-  goToEventList(context, int? year) {
-    settingsController?.updateSelectedYear(year.toString());
-    settingsController?.updateSelectedTrack('');
+  void goToEventList(BuildContext context, int? year) {
+    widget.settingsController?.updateSelectedYear(year.toString());
+    widget.settingsController?.updateSelectedTrack('');
     GoRouter.of(context).pushReplacement('/eventlist');
   }
 
-//void _handleSettingsChanged()  {
-//}
-
   @override
   Widget build(BuildContext context) {
-    databaseHelper.addListener(getConferenceList);
-//databaseHelper.addListener(_handleSettingsChanged);
     return SafeArea(
       child: FutureBuilder<List<Conference>>(
           future: getConferenceList(),
@@ -140,12 +150,6 @@ class ConferenceList extends StatelessWidget with ChangeNotifier {
                                           makeitUTF8(
                                               conferenceList![index].venue!),
                                         ]),
-/*                                    Text('org: ${conferenceList![index].venue!}',
-                                        style: const TextStyle(
-                                          color: Colors.black,
-                                          fontWeight: FontWeight.bold,
-                                        )),
-*/
                                       Text(
                                       'City: ${conferenceList![index].city}',
                                       style: const TextStyle(
@@ -175,5 +179,4 @@ class ConferenceList extends StatelessWidget with ChangeNotifier {
           }),
     );
   }
-
 }

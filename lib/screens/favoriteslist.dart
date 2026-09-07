@@ -7,10 +7,10 @@ import 'package:searchable_listview/searchable_listview.dart';
 import 'package:fosdem/models/event.dart';
 
 /// Displays a list of Events.
-class FavoritesList extends StatefulWidget with ChangeNotifier {
+class FavoritesList extends StatefulWidget {
   final SettingsController settingsController;
 
-  FavoritesList({
+  const FavoritesList({
     super.key,
     required this.settingsController,
   });
@@ -24,6 +24,22 @@ class FavoritesList extends StatefulWidget with ChangeNotifier {
 class _FavoritesListState extends State<FavoritesList> {
   DatabaseHelper databaseHelper = DatabaseHelper();
   List<Event>? eventList = [];
+
+  @override
+  void initState() {
+    super.initState();
+    widget.settingsController.addListener(_handleSettingsChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.settingsController.removeListener(_handleSettingsChanged);
+    super.dispose();
+  }
+
+  void _handleSettingsChanged() {
+    setState(() {});
+  }
 
   void _displayAlert(String aText, BuildContext context) {
     var alert = AlertDialog(
@@ -58,7 +74,7 @@ class _FavoritesListState extends State<FavoritesList> {
 // building all Widgets up front, the ListView.builder constructor lazily
 // builds Widgets as they’re scrolled into view.
 
-  Widget showSearchableList(eventList) {
+  Widget showSearchableList(List<Event> eventList) {
     return SearchableList<Event>.async(
       //initialList: eventList,
       itemBuilder: ( Event aEvent)  {
@@ -80,7 +96,7 @@ class _FavoritesListState extends State<FavoritesList> {
           ),
         );
         return eventList;
-      },asyncListFilter: (q, aList) {
+      },asyncListFilter: (q, aList) async {
         return aList
             .where((element) => element.title.contains(q))
             .toList();
@@ -90,7 +106,6 @@ class _FavoritesListState extends State<FavoritesList> {
 //            (element) => element.title.toLowerCase().contains(value),
 //          )
 //          .toList(),
-      onItemSelected: (Event item) {},
       emptyWidget: const EmptyView(),
 
       inputDecoration: const InputDecoration(

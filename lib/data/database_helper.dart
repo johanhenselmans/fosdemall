@@ -103,39 +103,35 @@ class DatabaseHelper extends ChangeNotifier {
   Future<int?> insertConference(Conference aConference) async {
     var dbClient = await db;
     int? res;
-    await dbClient.transaction((txn) async {
-      try {
-        res = await txn.insert("Conference", aConference.toMap());
-      } on DatabaseException catch (e) {
-        if (e.toString().contains('code 2067')) {
-          print('Year unique constraint, carry on');
-        }
-      } catch (e) {
-        print('error inserting Conference: $aConference');
-        _handleError(e);
+    try {
+      res = await dbClient.insert("Conference", aConference.toMap());
+    } on DatabaseException catch (e) {
+      if (e.toString().contains('code 2067')) {
+        print('Year unique constraint, carry on');
       }
-    });
+    } catch (e) {
+      print('error inserting Conference: $aConference');
+      _handleError(e);
+    }
     return res;
   }
 
   Future<void> updateConference(Conference aConference) async {
     // Get a reference to the database.
     final dbClient = await db;
-    await dbClient.transaction((txn) async {
-      try {
-        txn.update(
-          'Conference',
-          aConference.toMap(),
-          // Ensure that the Conference has a matching id.
-          where: "year = ?",
-          // Pass the Dog's id as a whereArg to prevent SQL injection.
-          whereArgs: [aConference.year],
-        );
-      } catch (e) {
-        print('error updating conference: $aConference');
-        _handleError(e);
-      }
-    });
+    try {
+      await dbClient.update(
+        'Conference',
+        aConference.toMap(),
+        // Ensure that the Conference has a matching id.
+        where: "year = ?",
+        // Pass the Dog's id as a whereArg to prevent SQL injection.
+        whereArgs: [aConference.year],
+      );
+    } catch (e) {
+      print('error updating conference: $aConference');
+      _handleError(e);
+    }
   }
 
   Future<int> deleteConferences() async {
@@ -211,105 +207,105 @@ class DatabaseHelper extends ChangeNotifier {
 
   Future<void> putTheEventListIntoTheDatabase(
       {required ConferenceAndEvent confandevents, int? year}) async {
-    //Find the same Event in the database:
-    //If it is not available, insert the Event
     final dbClient = await db;
-    if (confandevents.eventList != null && confandevents.eventList!.isNotEmpty) {
-      List<String?> eventIdvalues = [];
-      for (Event anEvent in confandevents.eventList!) {
-        try {
-          //first we check if a group variable is added: that means that this is a generic call to fetch Events
-          //else we have the list of Events that are added for the logged in user.
-          //If the Events are picked up while the user is logged in, the meaning of available == 0
-          //means he is overEvented. Every value above means he is available.
-          //If the user is not logged in, every value > 1 (1= available, 0=unavailable), means not available
-          var dbList = await dbClient.query('Event',
-              where: 'eventid = ?', whereArgs: [anEvent.eventId]);
-          if (dbList.isNotEmpty) {
-            Map map = dbList[0];
-            // only update Event when there is a new revision or if there is no revision of the current Event
-            // or if the avalable status has been changed
-            Event tmpEvent = Event.fromMapToObject(map);
-            // transfer data that can not be available in the downloaded Eventinfo;
-            await updateEvent(tmpEvent);
-          } else {
-            await insertEvent(anEvent);
+    await dbClient.transaction((txn) async {
+      if (confandevents.eventList != null && confandevents.eventList!.isNotEmpty) {
+        // Fetch existing event IDs and favorites in one query to avoid per-item query locks
+        List<Map> existingRows = await txn.query(
+          'Event',
+          columns: ['eventid', 'favorite'],
+        );
+        Map<int, int> existingFavorites = {};
+        Set<int> existingEventIds = {};
+        for (var row in existingRows) {
+          if (row['eventid'] != null) {
+            int eid = row['eventid'] is int ? row['eventid'] as int : int.parse(row['eventid'].toString());
+            existingEventIds.add(eid);
+            if (row['favorite'] != null) {
+              existingFavorites[eid] = row['favorite'] is int ? row['favorite'] as int : int.parse(row['favorite'].toString());
+            }
           }
-          eventIdvalues.add(anEvent.eventId.toString());
-        } on Exception catch (exception) {
-          // only executed if error is of type Exception
-          print(exception);
-        } catch (error) {
-          print(error.toString());
+        }
+
+        List<String?> eventIdvalues = [];
+        Batch batch = txn.batch();
+        for (Event anEvent in confandevents.eventList!) {
+          try {
+            var mapData = anEvent.toMap();
+            int? eid = anEvent.eventId;
+            if (eid != null) {
+              if (existingFavorites.containsKey(eid)) {
+                mapData['favorite'] = existingFavorites[eid];
+              }
+              if (existingEventIds.contains(eid)) {
+                batch.update(
+                  'Event',
+                  mapData,
+                  where: "eventid = ?",
+                  whereArgs: [eid],
+                );
+              } else {
+                batch.insert('Event', mapData);
+              }
+              eventIdvalues.add(eid.toString());
+            }
+          } catch (error) {
+            print(error.toString());
+          }
+        }
+        await batch.commit(noResult: true);
+        
+        if (year != null && eventIdvalues.isNotEmpty) {
+          String eventIdSingleQuoteString = eventIdvalues.fold(
+              '', (value, element) => '$value,\'${element!}\'');
+          int res = await txn.delete(
+            'Event',
+            where:
+            'eventid not in (${eventIdSingleQuoteString.substring(1)}) and year = ?',
+            whereArgs: [year],
+          );
+          if (debug == DebugLevel.All || debug == DebugLevel.Database) {
+            print('Events deleted: $res');
+          }
         }
       }
-    //remove Events that are not in the internet database anymore, and the files belonging to it
-    String eventIdSinqleQuoteString = eventIdvalues.fold(
-        '', (value, element) => '$value,\'${element!}\'');
-    //print('values: ${Eventcodevalues.toString()}, string: ${EventcodeSinqleQuoteString.substring(1)}');
-    //TODO remove files belonging to Eventcodes that are not there any more
-    // only do this if the if the group was mentioned, otherwise it means that the Events of a logged in user
-    // are picked up. That is not the complete assortiment of Events.
-    if (year != null) {
-      // first select the Events that are not there any more
-      // then delete their assets locally: thumbnail images and audio and image files
-      // the delete  the Events from the database.
-      int res = await dbClient.delete(
-        'Event',
-        where:
-        'eventid not in (${eventIdSinqleQuoteString.substring(1)}) and year = ?',
-        whereArgs: [year],
-      );
-//        int res = await dbClient.delete('Event', where: 'Eventcode not in (${Eventcodevalues.join(',')}) and groupcol = ?', whereArgs: [group],);
-//        int res = await dbClient.delete('Event', where: 'Eventcode not in (?) and groupcol = ?', whereArgs: [EventcodeString.substring(1),group],);
-      if (debug == DebugLevel.All || debug == DebugLevel.Database) {
-        print('Events deleted: $res');
-      }
-    }
-    //TODO: make sure the update of the database is recorded in the prefs, so we can update when the app has not updated for a day.
-    //notifyListeners();
-    }
 
-    if (confandevents.conference != null && confandevents.conference!.year != null) {
+      if (confandevents.conference != null && confandevents.conference!.year != null) {
         try {
-          var dbList = await dbClient.query('Conference',
+          var dbList = await txn.query('Conference',
               where: 'year = ?', whereArgs: [confandevents.conference!.year]);
           if (dbList.isNotEmpty) {
-            Map map = dbList[0];
-            // only update Event when there is a new revision or if there is no revision of the current Event
-            // or if the avalable status has been changed
-            Conference tmpConference = Conference.fromMapToObject(map);
-            // transfer data that can not be available in the downloaded Eventinfo;
-            await updateConference(tmpConference);
+            await txn.update(
+              'Conference',
+              confandevents.conference!.toMap(),
+              where: "year = ?",
+              whereArgs: [confandevents.conference!.year],
+            );
           } else {
-            await insertConference(confandevents.conference!);
+            await txn.insert('Conference', confandevents.conference!.toMap());
           }
-        } on Exception catch (exception) {
-          // only executed if error is of type Exception
-          print(exception);
         } catch (error) {
           print(error.toString());
         }
       }
-
-
+    });
+    notifyListeners();
   }
+
 
   Future<int?> insertEvent(Event anEvent) async {
     var dbClient = await db;
     int? res;
-    await dbClient.transaction((txn) async {
-      try {
-        res = await txn.insert("Event", anEvent.toMap());
-      } on DatabaseException catch (e) {
-        if (e.toString().contains('code 2067')) {
-          print('Event unique constraint, carry on');
-        }
-      } catch (e) {
-        print('error inserting Event: $anEvent');
-        _handleError(e);
+    try {
+      res = await dbClient.insert("Event", anEvent.toMap());
+    } on DatabaseException catch (e) {
+      if (e.toString().contains('code 2067')) {
+        print('Event unique constraint, carry on');
       }
-    });
+    } catch (e) {
+      print('error inserting Event: $anEvent');
+      _handleError(e);
+    }
     return res;
   }
 
@@ -359,21 +355,19 @@ class DatabaseHelper extends ChangeNotifier {
     // Get a reference to the database.
     final dbClient = await db;
     // Update the given Event.
-    await dbClient.transaction((txn) async {
-      try {
-        await txn.update('Event', anEvent.toMap(),
-            // Ensure that the Event has a matching id.
-            where: "eventid = ?",
-            // Pass the Event's id as a whereArg to prevent SQL injection.
-            whereArgs: [anEvent.eventId]);
-      } on DatabaseException catch (e) {
-        print('error updating Event: $anEvent');
-        _handleError(e);
-      } catch (e) {
-        print('error updating Event: $anEvent');
-        _handleError(e);
-      }
-    });
+    try {
+      await dbClient.update('Event', anEvent.toMap(),
+          // Ensure that the Event has a matching id.
+          where: "eventid = ?",
+          // Pass the Event's id as a whereArg to prevent SQL injection.
+          whereArgs: [anEvent.eventId]);
+    } on DatabaseException catch (e) {
+      print('error updating Event: $anEvent');
+      _handleError(e);
+    } catch (e) {
+      print('error updating Event: $anEvent');
+      _handleError(e);
+    }
     // make sure that after the events have been downloaded, there is a notification in the datbase
     // so that they will not be searched for again (apart from the event of the current year)
     // update the Conference to indicate a events are downloaded, only necessary if the Year does not already have this indication
@@ -408,11 +402,12 @@ class DatabaseHelper extends ChangeNotifier {
         print("Got Events and Conferences from Internet and Local Storage");
       }
       await putTheEventListIntoTheDatabase(confandevents: confandevents);
+      notifyListeners();
 //      await putTheConfenceIntoTheDatabase(conference: confandevents.conference);
     }
   }
 
-  Future<List<Event>> getEventsFromDb(int year, bool selectedNow,{String? track}) async {
+  Future<List<Event>> getEventsFromDb(int year, bool selectedNow,{String? track, SettingsController? settingsController}) async {
     DateTime now = DateTime.now();
     int currentYear = now.year;
     String currentDate = sprintf("%04d-%02d-%02d",[now.year, now.month, now.day] );
@@ -422,20 +417,37 @@ class DatabaseHelper extends ChangeNotifier {
     final dbClient = await db;
     List<Map> mapEvent = [];
     if (track != "") {
-      if (selectedNow == true) {
-        mapEvent =
-        await dbClient.query('Event',
-            where: 'year = ? and track like ? and eventdate >= ? and start >= ?',
-            whereArgs: [
-              year,
-              track,
-              '$currentDate',
-              '$currentStart'
-            ]);
+      if (settingsController?.selectedTracksFromAllYears == true) {
+        if (selectedNow == true) {
+          mapEvent =
+          await dbClient.query('Event',
+              where: 'track like ? and eventdate >= ? and start >= ?',
+              whereArgs: [
+                track,
+                '$currentDate',
+                '$currentStart'
+              ]);
+        } else {
+          mapEvent =
+          await dbClient.query('Event', where: 'track like ?',
+              whereArgs: [track]);
+        }
       } else {
-        mapEvent =
-        await dbClient.query('Event', where: 'year = ? and track like ?',
-            whereArgs: [year, track]);
+        if (selectedNow == true) {
+          mapEvent =
+          await dbClient.query('Event',
+              where: 'year = ? and track like ? and eventdate >= ? and start >= ?',
+              whereArgs: [
+                year,
+                track,
+                '$currentDate',
+                '$currentStart'
+              ]);
+        } else {
+          mapEvent =
+          await dbClient.query('Event', where: 'year = ? and track like ?',
+              whereArgs: [year, track]);
+        }
       }
     } else {
       if (selectedNow == true) {

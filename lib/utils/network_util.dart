@@ -26,7 +26,7 @@ class NetworkUtil {
     String res ="";
     try {
       final response = await http.get(Uri.parse(url));
-      res = response.body;
+      res = utf8.decode(response.bodyBytes);
       statusCode = response.statusCode;
       xmlTransformer.parse(res);
       var json = xmlTransformer.toParker();
@@ -44,6 +44,16 @@ class NetworkUtil {
     } on FormatException {
       if (debug == DebugLevel.All || debug == DebugLevel.XMLJSONParsing) {
         print("Could not convert messages");
+      }
+      return null;
+    } on http.ClientException {
+      if (debug == DebugLevel.All || debug == DebugLevel.XMLJSONParsing) {
+        print("Client Exception / Connection closed");
+      }
+      return null;
+    } catch (e) {
+      if (debug == DebugLevel.All || debug == DebugLevel.XMLJSONParsing) {
+        print("Error in getXML: $e");
       }
       return null;
     }
@@ -83,7 +93,7 @@ class NetworkUtil {
     String res ="";
     try {
       final response = await http.get(Uri.parse(url));
-      res = response.body;
+      res = utf8.decode(response.bodyBytes);
       statusCode = response.statusCode;
       xmlTransformer.parse(res);
       var json = xmlTransformer.toGData();
@@ -101,6 +111,16 @@ class NetworkUtil {
     } on FormatException {
       if (debug == DebugLevel.All || debug == DebugLevel.XMLJSONParsing) {
         print("Could not convert messages");
+      }
+      return null;
+    } on http.ClientException {
+      if (debug == DebugLevel.All || debug == DebugLevel.XMLJSONParsing) {
+        print("Client Exception / Connection closed");
+      }
+      return null;
+    } catch (e) {
+      if (debug == DebugLevel.All || debug == DebugLevel.XMLJSONParsing) {
+        print("Error in getXML: $e");
       }
       return null;
     }
@@ -134,7 +154,7 @@ class NetworkUtil {
 
   Future<dynamic> get(String url) {
     return http.get(Uri.parse(url)).then((http.Response response) {
-      final String res = response.body;
+      final String res = utf8.decode(response.bodyBytes);
       final int statusCode = response.statusCode;
 
       if (statusCode < 200 || statusCode > 400) {
@@ -148,7 +168,7 @@ class NetworkUtil {
     return http
         .post(Uri.parse(url), body: body, headers: headers as Map<String, String>?, encoding: encoding)
         .then((http.Response response) {
-      final String res = response.body;
+      final String res = utf8.decode(response.bodyBytes);
       final int statusCode = response.statusCode;
 
       if (statusCode < 200 || statusCode > 400 ) {

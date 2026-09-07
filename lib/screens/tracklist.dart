@@ -6,10 +6,10 @@ import 'package:searchable_listview/searchable_listview.dart';
 import 'package:simple_gesture_detector/simple_gesture_detector.dart';
 
 /// Displays a list of Tracks.
-class TrackList extends StatefulWidget with ChangeNotifier {
+class TrackList extends StatefulWidget {
   final SettingsController settingsController;
 
-  TrackList({
+  const TrackList({
     super.key,
     required this.settingsController,
   });
@@ -57,7 +57,7 @@ class _TrackListState extends State<TrackList> {
 // building all Widgets up front, the ListView.builder constructor lazily
 // builds Widgets as they’re scrolled into view.
 
-  Widget showSearchableList(trackList) {
+  Widget showSearchableList(List<String> trackList) {
     return SearchableList<String>.async(
       itemBuilder: (String anTrack) {
         return TrackItem(settingsController: widget.settingsController, track: anTrack);
@@ -80,7 +80,7 @@ class _TrackListState extends State<TrackList> {
         );
         return trackList;
       },
-      asyncListFilter: (q, aList) {
+      asyncListFilter: (q, aList) async {
         return aList.where((element) => element.toLowerCase().contains(q.toLowerCase())).toList();
       },
 //      filter: (value) => trackList
@@ -88,7 +88,7 @@ class _TrackListState extends State<TrackList> {
 //            (element) => element.title.toLowerCase().contains(value),
 //          )
 //          .toList(),
-      onItemSelected: (String item) {},
+
       emptyWidget: const EmptyView(),
 
       inputDecoration: InputDecoration(
@@ -139,11 +139,11 @@ class TrackItem extends StatelessWidget {
     required this.settingsController,
   });
 
-  goHome(BuildContext context) {
+  void goHome(BuildContext context) {
     GoRouter.of(context).pushReplacement('/');
   }
 
-  goToEventTrack(context, String track) {
+  void goToEventTrack(BuildContext context, String track) {
     settingsController.updateSelectedTrack(track);
     GoRouter.of(context).push('/eventlist');
   }

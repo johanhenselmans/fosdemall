@@ -8,10 +8,10 @@ import 'package:searchable_listview/searchable_listview.dart';
 import 'package:fosdem/models/event.dart';
 
 /// Displays a list of Events.
-class EventList extends StatefulWidget with ChangeNotifier {
+class EventList extends StatefulWidget {
   final SettingsController settingsController;
 
-  EventList({
+  const EventList({
     super.key,
     required this.settingsController,
   });
@@ -74,10 +74,16 @@ class _EventListState extends State<EventList> {
     List<Event> eventList = [];
     if(widget.settingsController.SelectedTrack != ""){
       eventList = await databaseHelper.getEventsFromDb(
-          int.parse(widget.settingsController.fosdemSelectedYear),widget.settingsController.selectedNow, track: widget.settingsController.SelectedTrack );
+          int.parse(widget.settingsController.fosdemSelectedYear),
+          widget.settingsController.selectedNow,
+          track: widget.settingsController.SelectedTrack,
+          settingsController: widget.settingsController);
     } else {
       eventList = await databaseHelper.getEventsFromDb(
-          int.parse(widget.settingsController.fosdemSelectedYear),widget.settingsController.selectedNow, track: "");
+          int.parse(widget.settingsController.fosdemSelectedYear),
+          widget.settingsController.selectedNow,
+          track: "",
+          settingsController: widget.settingsController);
     }
     return eventList;
   }
@@ -89,7 +95,7 @@ class _EventListState extends State<EventList> {
 // building all Widgets up front, the ListView.builder constructor lazily
 // builds Widgets as they’re scrolled into view.
 
-  Widget showSearchableList(eventList) {
+  Widget showSearchableList(List<Event> eventList) {
     return SearchableList<Event>.async(
       //initialList: eventList,
       itemBuilder: (Event anEvent) {
@@ -111,10 +117,12 @@ class _EventListState extends State<EventList> {
           ),
         );
         return eventList;
-      },asyncListFilter: (query, aList) {
+      },asyncListFilter: (query, list) async {
         //widget.settingsController.updateSearchEvent(query);
-        return aList
-            .where((element) => element.title.toLowerCase().contains(query.toLowerCase()))
+        return list
+//            .where((element) => element.title.toLowerCase().contains(query.toLowerCase()))
+            .where((element) =>
+              element.title.toLowerCase().contains(query.toLowerCase()))
             .toList();
       },
 //      filter: (value) => eventList
@@ -122,7 +130,6 @@ class _EventListState extends State<EventList> {
 //            (element) => element.title.toLowerCase().contains(value),
 //          )
 //          .toList(),
-      onItemSelected: (Event item) {},
       emptyWidget: const EmptyView(),
       //searchTextController: _controller,
 
