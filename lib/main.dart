@@ -47,7 +47,7 @@ void main() async {
   DatabaseHelper dbhelper = DatabaseHelper();
   WidgetsFlutterBinding.ensureInitialized();
 
-  dbhelper.updateEventsFromInternet(year: currentyear.toString());
+  await dbhelper.updateEventsFromInternet(year: currentyear.toString());
   runApp(
     MultiProvider(
       providers: [

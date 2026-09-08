@@ -77,7 +77,7 @@ Widget checkHTMLContent(String? content) {
 
 Widget makeitUTF8(String aString) {
   return FutureBuilder(
-      initialData: '',
+      initialData: aString,
       future: replaceUnknown(aString),
       builder: (BuildContext context, AsyncSnapshot snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
@@ -85,16 +85,16 @@ Widget makeitUTF8(String aString) {
             String theString = snapshot.data;
             return Text(theString);
           } else if (snapshot.hasError) {
-            return Text(snapshot.error.toString());
+            return Text(aString);
           }
         }
-        return const Text('Wating...',);
+        return Text(aString);
       });
 }
 
 Widget makeitUTF8Bold(String aString) {
   return FutureBuilder(
-      initialData: '',
+      initialData: aString,
       future: replaceUnknown(aString),
       builder: (BuildContext context, AsyncSnapshot snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
@@ -110,41 +110,56 @@ Widget makeitUTF8Bold(String aString) {
               ),
             );
           } else if (snapshot.hasError) {
-            return Text(snapshot.error.toString());
+            return Text(
+              aString,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
+            );
           }
         }
-        return const Text('Wating...',);
+        return Text(
+          aString,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
+        );
       });
 }
 
 
 //Not every string is encoded the same, as I noticed while looking at authors and conference venues and titles.
-Future<String> replaceUnknown(data) async {
-  //three ways:
-  //one:
-  //Iterable <int>bytes = data.runes;
-  //Uint8List bytesList = bytes as Uint8List.toList();
-  //two:
-//  Uint8List bytes = await Uint8List.fromList(utf8.encode(data)); // bytes with unknown encoding
-// we have a winner!
-  Uint8List bytesList = Uint8List.fromList(data.codeUnits); // bytes with unknown encoding
-  DecodingResult result = await CharsetDetector.autoDecode(bytesList);
-//  print(result.charset); // => e.g. 'SHIFT_JIS'
-//  print(result.string); // => e.g. '日本語'
-  return result.string;
-
-
+Future<String> replaceUnknown(dynamic data) async {
+  if (data == null) return '';
+  String str = data.toString();
+  try {
+    Uint8List bytesList = Uint8List.fromList(str.codeUnits);
+    DecodingResult result = await CharsetDetector.autoDecode(bytesList);
+    if (result.string.contains('\uFFFD') && !str.contains('\uFFFD')) {
+      return replaceLatin1(str);
+    }
+    return result.string;
+  } catch (e) {
+    return replaceLatin1(str);
+  }
 }
 
-String replaceLatin1(data){
- //Uint8List bytes = Uint8List.fromList(utf8.encode(data));; // bytes with unknown encoding
- // DecodingResult result = CharsetDetector.autoDecode(bytes);
-//  print(result.charset); // => e.g. 'SHIFT_JIS'
-//  print(result.string); // => e.g. '日本語'
-//  return result.string;
-  final itemUTF8 = latin1.encoder.convert(data);
-  final itemString = utf8.decode(itemUTF8, allowMalformed: true);
-  return itemString;
+String replaceLatin1(dynamic data) {
+  if (data == null) return '';
+  String str = data.toString();
+  try {
+    final itemUTF8 = latin1.encoder.convert(str);
+    final itemString = utf8.decode(itemUTF8, allowMalformed: false);
+    return itemString;
+  } catch (_) {
+    return str;
+  }
 }
 
 

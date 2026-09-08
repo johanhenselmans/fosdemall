@@ -20,13 +20,14 @@ import 'package:sprintf/sprintf.dart';
 class DatabaseHelper extends ChangeNotifier {
   static final DatabaseHelper _instance = DatabaseHelper.internal();
 
-
-
   factory DatabaseHelper() => _instance;
 
   static Database? _db;
 
   Future<Database> get db async => _db ??= await initDb();
+
+  bool _isSyncingConferences = false;
+  final Set<String> _syncingYears = {};
 
   DatabaseHelper.internal();
 
@@ -77,25 +78,28 @@ class DatabaseHelper extends ChangeNotifier {
     final dbClient = await db;
     if (conference != null && conference.year != null) {
       try {
-        var dbList = await dbClient.query('Conference',
-            where: 'year = ?', whereArgs: [conference.year]);
-        if (dbList.isNotEmpty) {
-          Map map = dbList[0];
-          // only update Event when there is a new revision or if there is no revision of the current Event
-          // or if the avalable status has been changed
-          Conference tmpConference = Conference.fromMapToObject(map);
-          // transfer data that can not be available in the downloaded Eventinfo;
-          await updateConference(tmpConference);
-        } else {
-          await insertConference(conference);
-        }
+        await dbClient.transaction((txn) async {
+          var dbList = await txn.query('Conference',
+              where: 'year = ?', whereArgs: [conference.year]);
+          if (dbList.isNotEmpty) {
+            Map map = dbList[0];
+            Conference tmpConference = Conference.fromMapToObject(map);
+            await txn.update(
+              'Conference',
+              tmpConference.toMap(),
+              where: "year = ?",
+              whereArgs: [tmpConference.year],
+            );
+          } else {
+            await txn.insert("Conference", conference.toMap());
+          }
+        });
       } on Exception catch (exception) {
         // only executed if error is of type Exception
         print(exception);
       } catch (error) {
         print(error.toString());
       }
-      //TODO: make sure the update of the database is recorded in the prefs, so we can update when the app has not updated for a day.
       notifyListeners();
     }
   }
@@ -177,16 +181,21 @@ class DatabaseHelper extends ChangeNotifier {
   }
 
   Future<List<Conference>> getConferencesFromDb() async {
-    //final dbClient = await (db as FutureOr<Database>);
     final dbClient = await db;
     List<Map> mapConference = await dbClient.query('Conference');
     List<Conference> listconf = [];
     //If only the curent Events are loaded, get all the older ones.
-    if (mapConference.isEmpty ||
-        mapConference.length == 1 ||
-        mapConference.length < getYearList().length) {
-      for (var year in getYearList()) {
-        updateEventsFromInternet(year: year.toString());
+    if ((mapConference.isEmpty ||
+            mapConference.length == 1 ||
+            mapConference.length < getYearList().length) &&
+        !_isSyncingConferences) {
+      _isSyncingConferences = true;
+      try {
+        for (var year in getYearList()) {
+          await updateEventsFromInternet(year: year.toString());
+        }
+      } finally {
+        _isSyncingConferences = false;
       }
       mapConference = await dbClient.query('Conference');
     }
@@ -195,12 +204,12 @@ class DatabaseHelper extends ChangeNotifier {
       if (debug == DebugLevel.All || debug == DebugLevel.Database) {
         print('getConferenceFromDb: ${conf.title!}');
       }
-      if (conf.year != '') {
+      if (conf.year != null && conf.year != 0) {
         listconf.add(conf);
       }
     }
     listconf.sort((a, b) {
-      return b.year.toString().compareTo(a.year.toString());
+      return (b.year ?? 0).compareTo(a.year ?? 0);
     });
     return listconf;
   }
@@ -382,99 +391,102 @@ class DatabaseHelper extends ChangeNotifier {
 
 
   Future<void> updateEventsFromInternet({required String year}) async {
-    Conference? aConference = await getConferenceFromDB(year);
-    //DateTime currentTime = DateTime.now().toUtc();
-    DateTime? downloaded;
-    if (aConference == null || aConference.eventsdownloaded == "") {
-      downloaded = DateTime(2000);
-    } else {
-      downloaded = DateTime.parse(aConference.eventsdownloaded);
+    if (_syncingYears.contains(year)) {
+      return;
     }
-    DateTime sixhoursAgo =
-        DateTime.now().toUtc().subtract(const Duration(hours: 6));
-    if (downloaded.isAfter(sixhoursAgo)) {
-      // do nothing, the stuff hase already been downloaded the last six hours
-    } else {
-      XMLDatasource xmldatasrc = XMLDatasource();
-      //Get a list of Event, depending on the argument;
-      ConferenceAndEvent confandevents = await xmldatasrc.getEvents(year);
-      if (debug == DebugLevel.All || debug == DebugLevel.Database) {
-        print("Got Events and Conferences from Internet and Local Storage");
+    _syncingYears.add(year);
+    try {
+      Conference? aConference = await getConferenceFromDB(year);
+      //DateTime currentTime = DateTime.now().toUtc();
+      DateTime? downloaded;
+      if (aConference == null || aConference.eventsdownloaded == "") {
+        downloaded = DateTime(2000);
+      } else {
+        downloaded = DateTime.parse(aConference.eventsdownloaded);
       }
-      await putTheEventListIntoTheDatabase(confandevents: confandevents);
-      notifyListeners();
-//      await putTheConfenceIntoTheDatabase(conference: confandevents.conference);
+      DateTime sixhoursAgo =
+          DateTime.now().toUtc().subtract(const Duration(hours: 6));
+      if (downloaded.isAfter(sixhoursAgo)) {
+        // do nothing, the stuff hase already been downloaded the last six hours
+      } else {
+        XMLDatasource xmldatasrc = XMLDatasource();
+        //Get a list of Event, depending on the argument;
+        ConferenceAndEvent confandevents = await xmldatasrc.getEvents(year);
+        if (debug == DebugLevel.All || debug == DebugLevel.Database) {
+          print("Got Events and Conferences from Internet and Local Storage");
+        }
+        await putTheEventListIntoTheDatabase(confandevents: confandevents, year: int.tryParse(year));
+        notifyListeners();
+  //      await putTheConfenceIntoTheDatabase(conference: confandevents.conference);
+      }
+    } finally {
+      _syncingYears.remove(year);
     }
   }
 
   Future<List<Event>> getEventsFromDb(int year, bool selectedNow,{String? track, SettingsController? settingsController}) async {
     DateTime now = DateTime.now();
-    int currentYear = now.year;
     String currentDate = sprintf("%04d-%02d-%02d",[now.year, now.month, now.day] );
-      String currentStart = sprintf("%02d:%02d",[now.hour, now.minute]);
-
+    String currentStart = sprintf("%02d:%02d",[now.hour, now.minute]);
 
     final dbClient = await db;
-    List<Map> mapEvent = [];
-    if (track != "") {
-      if (settingsController?.selectedTracksFromAllYears == true) {
-        if (selectedNow == true) {
-          mapEvent =
-          await dbClient.query('Event',
-              where: 'track like ? and eventdate >= ? and start >= ?',
-              whereArgs: [
-                track,
-                '$currentDate',
-                '$currentStart'
-              ]);
+
+    Future<List<Map>> queryEvents() async {
+      if (track != null && track != "") {
+        if (settingsController?.selectedTracksFromAllYears == true) {
+          if (selectedNow == true) {
+            return await dbClient.query('Event',
+                where: 'track like ? and eventdate >= ? and start >= ?',
+                whereArgs: [
+                  track,
+                  currentDate,
+                  currentStart
+                ]);
+          } else {
+            return await dbClient.query('Event', where: 'track like ?',
+                whereArgs: [track]);
+          }
         } else {
-          mapEvent =
-          await dbClient.query('Event', where: 'track like ?',
-              whereArgs: [track]);
+          if (selectedNow == true) {
+            return await dbClient.query('Event',
+                where: 'year = ? and track like ? and eventdate >= ? and start >= ?',
+                whereArgs: [
+                  year,
+                  track,
+                  currentDate,
+                  currentStart
+                ]);
+          } else {
+            return await dbClient.query('Event', where: 'year = ? and track like ?',
+                whereArgs: [year, track]);
+          }
         }
       } else {
         if (selectedNow == true) {
-          mapEvent =
-          await dbClient.query('Event',
-              where: 'year = ? and track like ? and eventdate >= ? and start >= ?',
+          return await dbClient.query('Event',
+              where: 'year = ? and eventdate >= ? and start >= ?',
               whereArgs: [
                 year,
-                track,
-                '$currentDate',
-                '$currentStart'
+                currentDate,
+                currentStart
               ]);
         } else {
-          mapEvent =
-          await dbClient.query('Event', where: 'year = ? and track like ?',
-              whereArgs: [year, track]);
+          return await dbClient.query('Event', where: 'year = ?', whereArgs: [year]);
         }
-      }
-    } else {
-      if (selectedNow == true) {
-        mapEvent =
-        await dbClient.query('Event',
-            where: 'year = ? and eventdate >= ? and start >= ?',
-            whereArgs: [
-              year,
-              '$currentDate',
-              '$currentStart'
-            ]);
-      } else {
-        mapEvent =
-        await dbClient.query('Event', where: 'year = ?', whereArgs: [year]);
       }
     }
 
+    List<Map> mapEvent = await queryEvents();
+
     // This should not happen. If it did, something went wrong gettings the events from
     // the schedulefiles or from the internet.
-    if(mapEvent.isEmpty) {
+    if (mapEvent.isEmpty) {
       XMLDatasource xmldatasrc = XMLDatasource();
       ConferenceAndEvent confandevents = await xmldatasrc.getEvents(year.toString());
-      if (confandevents.eventList!.isNotEmpty){
-        await putTheEventListIntoTheDatabase(confandevents: confandevents);
-        //await putTheConfenceIntoTheDatabase(conference: confandevents.conference);
+      if (confandevents.eventList != null && confandevents.eventList!.isNotEmpty){
+        await putTheEventListIntoTheDatabase(confandevents: confandevents, year: year);
+        mapEvent = await queryEvents();
       }
-
     }
     List<Event> listEvent = [];
     for (var map in mapEvent) {
@@ -537,12 +549,9 @@ class DatabaseHelper extends ChangeNotifier {
 
   Future<List<Event>> getEventList(int year, SettingsController controller) async {
     DatabaseHelper databaseHelper = DatabaseHelper();
-    databaseHelper.updateEventsFromInternet(year: year.toString());
-    List<Event> tmpEventList = [];
-    return databaseHelper.getEventsFromDb(year, controller.selectedNow).then((value) {
-      tmpEventList = value;
-      return tmpEventList;
-    });
+    await databaseHelper.updateEventsFromInternet(year: year.toString());
+    List<Event> tmpEventList = await databaseHelper.getEventsFromDb(year, controller.selectedNow, settingsController: controller);
+    return tmpEventList;
   }
 
   Future<List<String>> getTrackListFromDb(int year, SettingsController controller) async {
