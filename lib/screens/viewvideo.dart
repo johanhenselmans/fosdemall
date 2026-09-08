@@ -95,17 +95,30 @@ class _ViewVideoState extends State<ViewVideo> {
         return AlertDialog(
           title: const Text("Video Format Notice"),
           content: const Text(
-            "iOS can only play AV1/webm on iPhone 15 or later. Please go back to the event and choose the MP4 video link.",
+            "iOS can only play AV1/webm on iPhone 15 or later. You can choose to go back to the event for an MP4 link or launch the WebM video in an external app or browser.",
           ),
           actions: <Widget>[
+            TextButton(
+              child: const Text("Back to Event"),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+                if (parentContext.mounted) {
+                  GoRouter.of(parentContext).pop();
+                }
+              },
+            ),
             ElevatedButton(
               style: fosdemElevatedButtonStyle,
               child: const Text(
-                "Back to Event",
+                "Launch External App",
                 style: TextStyle(color: fosdemColorButtonTekst),
               ),
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(dialogContext).pop();
+                final uri = Uri.parse(widget.videoURL);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
                 if (parentContext.mounted) {
                   GoRouter.of(parentContext).pop();
                 }
