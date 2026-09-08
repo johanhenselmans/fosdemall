@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:fosdem/utils/settings_controller.dart';
@@ -25,6 +26,7 @@ class _ViewVideoState extends State<ViewVideo> {
   VideoPlayerController? _controller;
   bool _hasError = false;
   bool _dialogShown = false;
+  Timer? _timer;
 
   void _goback() async {
     GoRouter.of(context).pop();
@@ -36,6 +38,13 @@ class _ViewVideoState extends State<ViewVideo> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _initPlayer();
+      }
+    });
+    _timer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
+      if (_controller != null && _controller!.value.isInitialized && _controller!.value.isPlaying) {
+        if (mounted) {
+          setState(() {});
+        }
       }
     });
   }
@@ -52,6 +61,9 @@ class _ViewVideoState extends State<ViewVideo> {
     try {
       _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoURL));
       await _controller!.initialize();
+      _controller!.addListener(() {
+        if (mounted) setState(() {});
+      });
       if (mounted) {
         setState(() {});
         _controller!.play();
@@ -115,6 +127,14 @@ class _ViewVideoState extends State<ViewVideo> {
     }
   }
 
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = duration.inHours;
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+  }
+
   @override
   Widget build(BuildContext context) {
     double aheight = MediaQuery.of(context).size.height;
@@ -154,7 +174,7 @@ class _ViewVideoState extends State<ViewVideo> {
                 children: [
                   SizedBox(
                     width: awidth,
-                    height: aheight,
+                    height: aheight + 80, // Extra height for slider and time labels
                     child: _hasError
                         ? Center(
                             child: Column(
@@ -169,34 +189,83 @@ class _ViewVideoState extends State<ViewVideo> {
                                 ElevatedButton(
                                   style: fosdemElevatedButtonStyle,
                                   onPressed: _launchExternal,
-                                  child: const Text("Open Video Externally"),
+                                  child: const Text(
+                                    "Open Video Externally",
+                                    style: TextStyle(color: fosdemColorButtonTekst),
+                                  ),
                                 ),
                               ],
                             ),
                           )
                         : (_controller != null && _controller!.value.isInitialized
-                            ? Stack(
-                                alignment: Alignment.center,
+                            ? Column(
                                 children: [
-                                  AspectRatio(
-                                    aspectRatio: _controller!.value.aspectRatio,
-                                    child: VideoPlayer(_controller!),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(
-                                      _controller!.value.isPlaying
-                                          ? Icons.pause
-                                          : Icons.play_arrow,
-                                      color: Colors.white,
-                                      size: 50.0,
+                                  Expanded(
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        AspectRatio(
+                                          aspectRatio: _controller!.value.aspectRatio,
+                                          child: VideoPlayer(_controller!),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            _controller!.value.isPlaying
+                                                ? Icons.pause
+                                                : Icons.play_arrow,
+                                            color: Colors.white,
+                                            size: 50.0,
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _controller!.value.isPlaying
+                                                  ? _controller!.pause()
+                                                  : _controller!.play();
+                                            });
+                                          },
+                                        ),
+                                      ],
                                     ),
-                                    onPressed: () {
+                                  ),
+                                  const SizedBox(height: 8),
+                                  // Slider / Scrollbar to position inside video
+                                  Slider(
+                                    value: _controller!.value.position.inMilliseconds
+                                        .toDouble()
+                                        .clamp(
+                                          0.0,
+                                          _controller!.value.duration.inMilliseconds
+                                              .toDouble(),
+                                        ),
+                                    min: 0.0,
+                                    max: _controller!.value.duration.inMilliseconds
+                                            .toDouble() > 0
+                                        ? _controller!.value.duration.inMilliseconds
+                                            .toDouble()
+                                        : 1.0,
+                                    onChanged: (value) {
                                       setState(() {
-                                        _controller!.value.isPlaying
-                                            ? _controller!.pause()
-                                            : _controller!.play();
+                                        _controller!.seekTo(
+                                            Duration(milliseconds: value.toInt()));
                                       });
                                     },
+                                  ),
+                                  // Time played and total time underneath
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          _formatDuration(_controller!.value.position),
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                        Text(
+                                          _formatDuration(_controller!.value.duration),
+                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               )
@@ -215,6 +284,7 @@ class _ViewVideoState extends State<ViewVideo> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     _controller?.dispose();
     super.dispose();
   }
