@@ -61,52 +61,54 @@ class Conference {
 //if the data comes from xml, than it is all strings, so we have to parse it to integers etc
 // year is only available in the database, not in the internet XML source, so we can determine
 // if it comes from the database by asking for the year value
+  static String? _extractString(dynamic val) {
+    if (val == null) return null;
+    if (val is Map) {
+      if (val.containsKey('\$t')) {
+        return val['\$t']?.toString();
+      }
+      return val.values.isNotEmpty ? val.values.first?.toString() : null;
+    }
+    return val.toString();
+  }
+
+  static int? _extractInt(dynamic val) {
+    if (val == null) return null;
+    if (val is int) return val;
+    final s = _extractString(val);
+    return s != null ? int.tryParse(s) : null;
+  }
+
   Conference.fromMapToObject(dynamic obj) {
     if (obj['year'] == null) {
-      //next we have to find out if it is from a local file, somehow these are better formet as
-      //the ones we get from the internet.
-      print("Runtimetype conference title: ${obj['title'].runtimeType.toString()}");
-      if (obj['title'].runtimeType.toString().contains('Map<String,') ) {
-        title = obj['title']['\$t'];
-        subtitle = obj['subtitle']['\$t'];
-        venue = obj['venue']['\$t'];
-        city = obj['city']['\$t'];
-        start = obj['start']['\$t'];
-        end = obj['end']['\$t'];
-        days = int.parse(obj['days']['\$t']);
-        day_change = obj['day_change']['\$t'];
-        timeslot_duration = obj['timeslot_duration']['\$t'];
-      } else {
-        title = obj['title'];
-        subtitle = obj['subtitle'];
-        venue = obj['venue'];
-        city = obj['city'];
-        start = obj['start'];
-        end = obj['end'];
-        days =  int.parse(obj['days']);
-        day_change = obj['day_change'];
-        timeslot_duration = obj['timeslot_duration'];
-      }
-      // Add the year to the mapping
+ //     print("Runtimetype conference title: ${obj['title'].runtimeType.toString()}");
+      title = _extractString(obj['title']);
+      subtitle = _extractString(obj['subtitle']);
+      venue = _extractString(obj['venue']);
+      city = _extractString(obj['city']);
+      start = _extractString(obj['start']);
+      end = _extractString(obj['end']);
+      days = _extractInt(obj['days']) ?? 1;
+      day_change = _extractString(obj['day_change']);
+      timeslot_duration = _extractString(obj['timeslot_duration']);
+
       DateFormat timeFormat = DateFormat('yyyy-MM-dd');
-      DateTime time = timeFormat.parse(start!);
+      DateTime time = timeFormat.parse(start ?? DateTime.now().toIso8601String());
       year = time.year;
-      //When a mapping takes place from the internet, we store the date when
-      //this occured.
       eventsdownloaded = DateTime.now().toUtc().toIso8601String();
     } else {
       year = obj['year'];
-      title = obj['title'];
-      subtitle = obj['subtitle'];
-      venue = obj['venue'];
-      city = obj['city'];
-      start = obj['start'];
-      end = obj['end'];
-      days = obj['days'];
-      day_change = obj['day_change'];
-      timeslot_duration = obj['timeslot_duration'];
+      title = _extractString(obj['title']);
+      subtitle = _extractString(obj['subtitle']);
+      venue = _extractString(obj['venue']);
+      city = _extractString(obj['city']);
+      start = _extractString(obj['start']);
+      end = _extractString(obj['end']);
+      days = _extractInt(obj['days']);
+      day_change = _extractString(obj['day_change']);
+      timeslot_duration = _extractString(obj['timeslot_duration']);
       if (obj['eventsdownloaded'] != null) {
-        eventsdownloaded = obj['eventsdownloaded'];
+        eventsdownloaded = obj['eventsdownloaded'].toString();
       }
     }
   }
