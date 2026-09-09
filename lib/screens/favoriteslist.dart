@@ -97,9 +97,17 @@ class _FavoritesListState extends State<FavoritesList> {
         );
         return eventList;
       },asyncListFilter: (q, aList) async {
-        return aList
-            .where((element) => element.title.contains(q))
-            .toList();
+        final query = q.toLowerCase();
+        return aList.where((element) {
+          final title = element.title.toLowerCase();
+          final track = element.track?.toLowerCase() ?? '';
+          final yearStr = element.year?.toString() ?? '';
+          final room = element.room?.toLowerCase() ?? '';
+          return title.contains(query) ||
+              track.contains(query) ||
+              yearStr.contains(query) ||
+              room.contains(query);
+        }).toList();
       },
 //      filter: (value) => eventList
 //          .swhere(

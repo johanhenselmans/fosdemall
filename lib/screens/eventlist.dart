@@ -117,13 +117,18 @@ class _EventListState extends State<EventList> {
           ),
         );
         return eventList;
-      },asyncListFilter: (query, list) async {
-        //widget.settingsController.updateSearchEvent(query);
-        return list
-//            .where((element) => element.title.toLowerCase().contains(query.toLowerCase()))
-            .where((element) =>
-              element.title.toLowerCase().contains(query.toLowerCase()))
-            .toList();
+      }, asyncListFilter: (query, list) async {
+        final q = query.toLowerCase();
+        return list.where((element) {
+          final title = element.title.toLowerCase();
+          final track = element.track?.toLowerCase() ?? '';
+          final yearStr = element.year?.toString() ?? '';
+          final room = element.room?.toLowerCase() ?? '';
+          return title.contains(q) ||
+              track.contains(q) ||
+              yearStr.contains(q) ||
+              room.contains(q);
+        }).toList();
       },
 //      filter: (value) => eventList
 //          .swhere(
