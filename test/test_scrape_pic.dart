@@ -38,7 +38,7 @@ void main() {
 
     await helper.saveOrUpdatePersonInDbForTest(
       dbClient: db,
-      year: 2025,
+      year: 2026,
       pid: 18694,
       rawName: 'Jens Mönig',
       slug: 'jens_monig',
