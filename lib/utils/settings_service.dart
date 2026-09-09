@@ -63,8 +63,28 @@ class SettingsService {
     UserSecureStorage.setSelectedFavoritesOfAllYears(avalue);
   }
 
+  Future<bool?> getSelectedPersonsOffAllYears() async {
+    return UserSecureStorage.getSelectedPersonsOfAllYears();
+  }
+
+  /// Persists the user's preferred ThemeMode to local or remote storage.
+  Future<void> updateSelectedPersonsOffAllYears(bool avalue) async {
+    // Use the shared_preferences package to persist settings locally or the
+    // http package to persist settings over the network.
+    UserSecureStorage.setSelectedPersonsOfAllYears(avalue);
+  }
+
+  Future<bool?> getSelectedEventsOffAllYears() async {
+    return UserSecureStorage.getSelectedEventsOfAllYears();
+  }
+
+  /// Persists the user's preferred events of all years setting.
+  Future<void> updateSelectedEventsOffAllYears(bool avalue) async {
+    UserSecureStorage.setSelectedEventsOfAllYears(avalue);
+  }
+
   Future<bool?> getNow() async {
-    return UserSecureStorage.getSelectedFavoritesOfAllYears();
+    return UserSecureStorage.getNow();
   }
 
   /// Persists the user's preferred ThemeMode to local or remote storage.
@@ -73,6 +93,4 @@ class SettingsService {
     // http package to persist settings over the network.
     UserSecureStorage.setNow(avalue);
   }
-
-
 }

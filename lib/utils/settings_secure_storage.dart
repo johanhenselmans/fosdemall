@@ -11,6 +11,9 @@ class UserSecureStorage {
 
 
 
+  static const _keySelectedPersonsOffAllYears = 'selectedpersonsofallyears';
+  static const _keySelectedEventsOffAllYears = 'selectedeventsofallyears';
+
   static Future setSelectedYear(String value) async {
     await _storage.write(key: _keySelectedYear, value: value);
   }
@@ -35,9 +38,8 @@ class UserSecureStorage {
 
   static Future<bool?> getSelectedTrackOfAllYears() async {
     var tmpvalue = await _storage.read(key: _keySelectedTrackOffAllYears);
-    tmpvalue ??= "false";
-    bool value = bool.fromEnvironment(tmpvalue, defaultValue: false);
-    return value;
+    if (tmpvalue == null) return false;
+    return bool.tryParse(tmpvalue) ?? (tmpvalue.toLowerCase() == 'true');
   }
 
   static Future setSelectedFavoritesOfAllYears(bool value) async {
@@ -45,10 +47,29 @@ class UserSecureStorage {
   }
 
   static Future<bool?> getSelectedFavoritesOfAllYears() async {
-    var tmpvalue = await _storage.read(key: _keySelectedTrackOffAllYears);
-    tmpvalue ??= "false";
-    bool value = bool.fromEnvironment(tmpvalue, defaultValue: false);
-    return value;
+    var tmpvalue = await _storage.read(key: _keySelectedFavoritesOffAllYears);
+    if (tmpvalue == null) return false;
+    return bool.tryParse(tmpvalue) ?? (tmpvalue.toLowerCase() == 'true');
+  }
+
+  static Future setSelectedPersonsOfAllYears(bool value) async {
+    await _storage.write(key: _keySelectedPersonsOffAllYears, value: value.toString());
+  }
+
+  static Future<bool?> getSelectedPersonsOfAllYears() async {
+    var tmpvalue = await _storage.read(key: _keySelectedPersonsOffAllYears);
+    if (tmpvalue == null) return false;
+    return bool.tryParse(tmpvalue) ?? (tmpvalue.toLowerCase() == 'true');
+  }
+
+  static Future setSelectedEventsOfAllYears(bool value) async {
+    await _storage.write(key: _keySelectedEventsOffAllYears, value: value.toString());
+  }
+
+  static Future<bool?> getSelectedEventsOfAllYears() async {
+    var tmpvalue = await _storage.read(key: _keySelectedEventsOffAllYears);
+    if (tmpvalue == null) return false;
+    return bool.tryParse(tmpvalue) ?? (tmpvalue.toLowerCase() == 'true');
   }
 
   static Future setNow(bool value) async {
@@ -57,9 +78,7 @@ class UserSecureStorage {
 
   static Future<bool?> getNow() async {
     var tmpvalue = await _storage.read(key: _keyNow);
-    tmpvalue ??= "false";
-    bool value = bool.fromEnvironment(tmpvalue, defaultValue: false);
-    return value;
+    if (tmpvalue == null) return false;
+    return bool.tryParse(tmpvalue) ?? (tmpvalue.toLowerCase() == 'true');
   }
-
 }

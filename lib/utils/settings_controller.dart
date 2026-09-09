@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' show ChangeNotifier, ThemeMode;
 import 'package:fosdem/models/event.dart';
+import 'package:fosdem/models/person.dart';
 
 import 'package:fosdem/utils/settings_service.dart' show SettingsService;
 
@@ -32,6 +33,8 @@ class SettingsController with ChangeNotifier {
   String get searchTrack => _searchTrack;
   late Event _SelectedEvent;
   Event get SelectedEvent => _SelectedEvent;
+  Person? _selectedPerson;
+  Person? get selectedPerson => _selectedPerson;
   late String _SelectedVideo;
   String get SelectedVideo => _SelectedVideo;
   String _SelectedTrack = '';
@@ -40,6 +43,10 @@ class SettingsController with ChangeNotifier {
   bool get selectedTracksFromAllYears => _selectedTracksFromAllYears;
   bool _selectedFavoritesFromAllYears = false;
   bool get selectedFavoritesFromAllYears => _selectedFavoritesFromAllYears;
+  bool _selectedPersonsFromAllYears = false;
+  bool get selectedPersonsFromAllYears => _selectedPersonsFromAllYears;
+  bool _selectedEventsFromAllYears = false;
+  bool get selectedEventsFromAllYears => _selectedEventsFromAllYears;
   bool _selectedNow = false;
   bool get selectedNow => _selectedNow;
 
@@ -55,6 +62,8 @@ class SettingsController with ChangeNotifier {
     // Important! Inform listeners a change has occurred.
     _selectedTracksFromAllYears = (await _settingsService.getSelectedTracksOffAllYears())!;
     _selectedFavoritesFromAllYears = (await _settingsService.getSelectedFavoritesOffAllYears())!;
+    _selectedPersonsFromAllYears = (await _settingsService.getSelectedPersonsOffAllYears()) ?? false;
+    _selectedEventsFromAllYears = (await _settingsService.getSelectedEventsOffAllYears()) ?? false;
     _selectedNow = (await _settingsService.getNow())!;
     notifyListeners();
   }
@@ -218,6 +227,25 @@ class SettingsController with ChangeNotifier {
     await _settingsService.updateNow(aBool);
   }
 
+  Future<void> updateSelectedPersonsOfAllYears(bool? aBool) async {
+    if (aBool == null) return;
 
+    _selectedPersonsFromAllYears = aBool;
+    notifyListeners();
+    await _settingsService.updateSelectedPersonsOffAllYears(aBool);
+  }
+
+  Future<void> updateSelectedEventsOfAllYears(bool? aBool) async {
+    if (aBool == null) return;
+
+    _selectedEventsFromAllYears = aBool;
+    notifyListeners();
+    await _settingsService.updateSelectedEventsOffAllYears(aBool);
+  }
+
+  Future<void> updateSelectedPerson(Person? aPerson) async {
+    _selectedPerson = aPerson;
+    notifyListeners();
+  }
 
 }

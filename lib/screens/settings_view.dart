@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fosdem/data/database_helper.dart';
 import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/utils/style.dart';
 import 'package:fosdem/utils/constants.dart';
@@ -26,7 +27,12 @@ class _SettingsViewState extends State<SettingsView> {
   String selectedYear = "";
   bool isFavoritesChecked = false;
   bool isTracksChecked = false;
+  bool isPersonsChecked = false;
+  bool isEventsChecked = false;
   bool isNowChecked = false;
+  bool _isScraping = false;
+  String _scrapeProgressText = '';
+  bool _initialScraped = false;
 
   int _tapcount = 0;
 
@@ -36,7 +42,19 @@ class _SettingsViewState extends State<SettingsView> {
     widget.controller.addListener(_handleSettingsChanged);
     isFavoritesChecked = widget.controller.selectedFavoritesFromAllYears;
     isTracksChecked = widget.controller.selectedTracksFromAllYears;
+    isPersonsChecked = widget.controller.selectedPersonsFromAllYears;
+    isEventsChecked = widget.controller.selectedEventsFromAllYears;
     isNowChecked = widget.controller.selectedNow;
+    _checkInitialScraped();
+  }
+
+  Future<void> _checkInitialScraped() async {
+    final done = await DatabaseHelper().isInitialPersonsScraped();
+    if (mounted) {
+      setState(() {
+        _initialScraped = done;
+      });
+    }
   }
 
   @override
@@ -53,6 +71,8 @@ class _SettingsViewState extends State<SettingsView> {
     selectedYear = widget.controller.fosdemSelectedYear;
     isFavoritesChecked = widget.controller.selectedFavoritesFromAllYears;
     isTracksChecked = widget.controller.selectedTracksFromAllYears;
+    isPersonsChecked = widget.controller.selectedPersonsFromAllYears;
+    isEventsChecked = widget.controller.selectedEventsFromAllYears;
     isNowChecked = widget.controller.selectedNow;
     setState(() {});
   }
@@ -173,6 +193,284 @@ class _SettingsViewState extends State<SettingsView> {
                 widget.controller.updateSelectedTracksOfAllYears(false);
               }
             }),
+        const SizedBox(
+          height: 20,
+        ),
+        CheckboxListTile(
+            title: const Text("Display persons of all years in the persons list"),
+            value: isPersonsChecked,
+            onChanged: (bool? value) {
+              setState(() {
+                isPersonsChecked = value!;
+              });
+              if (isPersonsChecked) {
+                widget.controller.updateSelectedPersonsOfAllYears(true);
+              } else {
+                widget.controller.updateSelectedPersonsOfAllYears(false);
+              }
+            }),
+        const SizedBox(
+          height: 20,
+        ),
+        CheckboxListTile(
+            title: const Text("Display events of all years in the event list"),
+            value: isEventsChecked,
+            onChanged: (bool? value) {
+              setState(() {
+                isEventsChecked = value!;
+              });
+              if (isEventsChecked) {
+                widget.controller.updateSelectedEventsOfAllYears(true);
+              } else {
+                widget.controller.updateSelectedEventsOfAllYears(false);
+              }
+            }),
+        const SizedBox(
+          height: 20,
+        ),
+        if (!_initialScraped) ...[
+          ElevatedButton(
+            style: fosdemElevatedButtonStyle,
+            onPressed: _isScraping
+                ? null
+                : () async {
+                    setState(() {
+                      _isScraping = true;
+                      _scrapeProgressText = 'Starting initial scraper since 2013...';
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Starting initial scraping of all speakers since 2013...'),
+                      ),
+                    );
+                    try {
+                      await DatabaseHelper().scrapePersonsSince2013(
+                        startYear: 2013,
+                        onProgress: (msg, prog) {
+                          if (mounted) {
+                            setState(() {
+                              _scrapeProgressText = msg;
+                            });
+                          }
+                        },
+                      );
+                      final done = await DatabaseHelper().isInitialPersonsScraped();
+                      if (mounted) {
+                        setState(() {
+                          _initialScraped = done;
+                        });
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Successfully scraped all speakers since 2013!'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error scraping speakers: $e'),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isScraping = false;
+                          _scrapeProgressText = '';
+                        });
+                      }
+                    }
+                  },
+            child: _isScraping
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _scrapeProgressText.isNotEmpty ? _scrapeProgressText : "Scraping speakers...",
+                          style: const TextStyle(color: fosdemColorButtonTekst, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  )
+                : const Text(
+                    "Initial Scraping: All Speakers Since 2013",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: fosdemColorButtonTekst),
+                  ),
+          ),
+        ] else ...[
+          ElevatedButton(
+            style: fosdemElevatedButtonStyle,
+            onPressed: _isScraping
+                ? null
+                : () async {
+                    setState(() {
+                      _isScraping = true;
+                      _scrapeProgressText = 'Refreshing events for $currentYear...';
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Refreshing events for $currentYear...'),
+                      ),
+                    );
+                    try {
+                      await DatabaseHelper().refreshCurrentYearEvents(
+                        onProgress: (msg) {
+                          if (mounted) {
+                            setState(() {
+                              _scrapeProgressText = msg;
+                            });
+                          }
+                        },
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Successfully refreshed events for $currentYear!'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error refreshing events: $e'),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isScraping = false;
+                          _scrapeProgressText = '';
+                        });
+                      }
+                    }
+                  },
+            child: _isScraping && _scrapeProgressText.contains('events')
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _scrapeProgressText,
+                          style: const TextStyle(color: fosdemColorButtonTekst, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    "Refresh Events for Current Year ($currentYear)",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: fosdemColorButtonTekst),
+                  ),
+          ),
+          const SizedBox(
+            height: 10,
+          ),
+          ElevatedButton(
+            style: fosdemElevatedButtonStyle,
+            onPressed: _isScraping
+                ? null
+                : () async {
+                    setState(() {
+                      _isScraping = true;
+                      _scrapeProgressText = 'Refreshing persons for $currentYear...';
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Refreshing persons for $currentYear...',
+                        ),
+                      ),
+                    );
+                    try {
+                      await DatabaseHelper().refreshCurrentYearPersons(
+                        onProgress: (msg, prog) {
+                          if (mounted) {
+                            setState(() {
+                              _scrapeProgressText = msg;
+                            });
+                          }
+                        },
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Successfully refreshed persons for $currentYear!',
+                            ),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error refreshing persons: $e'),
+                          ),
+                        );
+                      }
+                    } finally {
+                      if (mounted) {
+                        setState(() {
+                          _isScraping = false;
+                          _scrapeProgressText = '';
+                        });
+                      }
+                    }
+                  },
+            child: _isScraping && (_scrapeProgressText.contains('speakers') || _scrapeProgressText.contains('persons'))
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _scrapeProgressText,
+                          style: const TextStyle(color: fosdemColorButtonTekst, fontSize: 13),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    "Refresh Persons for Current Year ($currentYear)",
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: fosdemColorButtonTekst),
+                  ),
+          ),
+        ],
         const SizedBox(
           height: 40,
         ),
