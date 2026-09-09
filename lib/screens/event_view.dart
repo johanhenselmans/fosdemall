@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:fosdem/data/database_helper.dart';
 import 'package:fosdem/models/event.dart';
+import 'package:fosdem/models/person.dart';
 import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/utils/style.dart';
 import 'package:fosdem/utils/utils.dart';
@@ -107,6 +108,28 @@ class _EventViewState extends State<EventView> {
     return personlist;
   }
 
+  Future<void> _goToPerson(Map item) async {
+    int? id;
+    if (item['id'] != null) {
+      id = int.tryParse(item['id'].toString());
+    }
+    String? name = item[r'$t']?.toString();
+    Person? person;
+    if (name != null && name.trim().isNotEmpty) {
+      person = await databaseHelper.getPersonById(id ?? 0, personName: name.trim());
+    } else if (id != null) {
+      person = await databaseHelper.getPersonById(id);
+    }
+    person ??= Person(
+      id,
+      name ?? '',
+    );
+    widget.controller.updateSelectedPerson(person);
+    if (mounted) {
+      GoRouter.of(context).push('/personview');
+    }
+  }
+
   List getAttachmentList() {
     final List attachmentlist = widget.event.attachments;
     return attachmentlist;
@@ -134,6 +157,11 @@ class _EventViewState extends State<EventView> {
     }
   }
 
+
+  void _goToLocation() {
+    widget.controller.updateSelectedEvent(widget.event);
+    GoRouter.of(context).push('/locationview');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -186,7 +214,7 @@ class _EventViewState extends State<EventView> {
                   snackBar = SnackBar(
                   content: Text('Removed "${widget.event
                       .title}" from favorites'),
-                  duration: const Duration(seconds: 2));
+                    duration: const Duration(seconds: 2));
                   }
                   ScaffoldMessenger.of(context).showSnackBar(snackBar);
                   //
@@ -219,16 +247,42 @@ class _EventViewState extends State<EventView> {
             children: [
               Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                  children:[
-                    Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children:[
-                          Text("${widget.event.eventdate} ${widget.event.start}",
-                              textAlign: TextAlign.center),
-                          Text("${widget.event.room}", textAlign: TextAlign.center),]),
-                    ]),
+                        children: [
+                          Text(
+                            "${widget.event.eventdate} ${widget.event.start}",
+                            textAlign: TextAlign.start,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Where: ${widget.event.room}",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (widget.event.room != null &&
+                        widget.event.room!.trim().isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: ElevatedButton.icon(
+                          style: fosdemElevatedButtonStyle,
+                          icon: const Icon(Icons.location_on_outlined,
+                              color: Colors.white, size: 18),
+                          label: const Text(
+                            "Show The Location",
+                            style: TextStyle(
+                                color: fosdemColorButtonTekst, fontSize: 13),
+                          ),
+                          onPressed: () => _goToLocation(),
+                        ),
+                      ),
+                  ]),
 
               const SizedBox(
                 height: 20,
@@ -257,13 +311,19 @@ class _EventViewState extends State<EventView> {
                   physics: const ScrollPhysics(),
                   itemBuilder: (BuildContext context, int index) {
                     final item = getPersonList()[index];
-                    //final itemUTF8 = latin1.encoder.convert(item['\$t']);
-                    //final itemString = utf8.decode(itemUTF8, allowMalformed: true);
-                    return Wrap(alignment: WrapAlignment.center, children: [
-                      makeitUTF8(item['\$t']),
-                      //Text("${itemString}"),
-                      //Text('and: ${item['\$t']}'),
-                    ]);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2.0),
+                      child: Center(
+                        child: ActionChip(
+                          avatar: const CircleAvatar(
+                            backgroundColor: fosdemBlue,
+                            child: Icon(Icons.person, size: 16, color: Colors.white),
+                          ),
+                          label: Text(cleanPersonName(item[r'$t'])),
+                          onPressed: () => _goToPerson(item),
+                        ),
+                      ),
+                    );
                   }),
               checkHTMLContent(widget.event.abstract),
               checkHTMLContent(widget.event.description),
