@@ -69,4 +69,21 @@ class Preferences {
     prefs.setBool('useTestSite', newvalue);
   }
 
+  bool getInitialPersonsScraped() {
+    try {
+      return prefs.getBool('initialPersonsScraped') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  void setInitialPersonsScraped(bool newvalue) async {
+    try {
+      prefs.setBool('initialPersonsScraped', newvalue);
+    } catch (_) {
+      final sp = await SharedPreferences.getInstance();
+      sp.setBool('initialPersonsScraped', newvalue);
+    }
+  }
+
 }

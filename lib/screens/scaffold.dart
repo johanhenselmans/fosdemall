@@ -9,7 +9,7 @@ import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/widgets/fosdem_app_bar.dart';
 
 /// The enum for scaffold tab.
-enum ScaffoldTab {eventlist, favoriteslist, tracklist, conferencelist, settings }
+enum ScaffoldTab {eventlist, favoriteslist, tracklist, personlist, conferencelist, settings }
 
 class FosdemScaffold extends StatelessWidget {
   const FosdemScaffold({
@@ -48,6 +48,7 @@ class FosdemScaffold extends StatelessWidget {
             ],
           ),
           bottomNavigationBar: BottomNavigationBar(
+            type: BottomNavigationBarType.fixed,
             currentIndex: selectedIndex,
             onTap: (int value) => _onItemTapped(value, context),
             selectedItemColor: bottomNavigationBarSelectedItemColor,
@@ -64,6 +65,10 @@ class FosdemScaffold extends StatelessWidget {
               BottomNavigationBarItem(
                 label: 'Tracks',
                 icon: Icon(Icons.add_road),
+              ),
+              BottomNavigationBarItem(
+                label: 'Persons',
+                icon: Icon(Icons.people),
               ),
               BottomNavigationBarItem(
                 label: 'Years',
@@ -90,10 +95,18 @@ class FosdemScaffold extends StatelessWidget {
             return "FOSDEM ${controller.fosdemSelectedYear} - ${controller.SelectedTrack}";
           }
         }
+        if (controller.selectedEventsFromAllYears == true) {
+          return "events of all years";
+        }
         return "FOSDEM ${controller.fosdemSelectedYear}";
       case ScaffoldTab.tracklist:
         if (controller.selectedTracksFromAllYears == true) {
           return "tracks of all years";
+        }
+        return "FOSDEM ${controller.fosdemSelectedYear}";
+      case ScaffoldTab.personlist:
+        if (controller.selectedPersonsFromAllYears == true) {
+          return "persons of all years";
         }
         return "FOSDEM ${controller.fosdemSelectedYear}";
       case ScaffoldTab.conferencelist:
@@ -112,12 +125,16 @@ class FosdemScaffold extends StatelessWidget {
     if (pathTemplate.startsWith('/eventlist')) return 0;
     if (pathTemplate == '/favoriteslist') return 1;
     if (pathTemplate == '/tracklist') return 2;
-    if (pathTemplate == '/conferencelist') return 3;
-    if (pathTemplate == '/settings') return 4;
+    if (pathTemplate == '/personlist') return 3;
+    if (pathTemplate == '/conferencelist') return 4;
+    if (pathTemplate == '/settings') return 5;
     return 0;
   }
 
   void _onItemTapped(int value, BuildContext context) {
+    if (settingsController.SelectedTrack.isNotEmpty) {
+      settingsController.updateSelectedTrack('');
+    }
     switch (ScaffoldTab.values[value]) {
       case ScaffoldTab.eventlist:
         context.go('/eventlist');
@@ -127,6 +144,9 @@ class FosdemScaffold extends StatelessWidget {
         break;
       case ScaffoldTab.tracklist:
         context.go('/tracklist');
+        break;
+      case ScaffoldTab.personlist:
+        context.go('/personlist');
         break;
       case ScaffoldTab.conferencelist:
         context.go('/conferencelist');

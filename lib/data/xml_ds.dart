@@ -4,6 +4,7 @@ import 'package:fosdem/utils/network_util.dart';
 import 'package:fosdem/models/conference.dart';
 import 'package:fosdem/models/event.dart';
 import 'package:fosdem/utils/constants.dart';
+import 'package:fosdem/utils/utils.dart';
 import 'package:flutter/services.dart';
 import 'package:xml2json/xml2json.dart';
 
@@ -238,14 +239,20 @@ class XMLDatasource {
           .contains("List<dynamic>")) {
         List<dynamic> data = eventmap['persons']['person'];
         for (var mapvalue in data) {
+          if (mapvalue is Map && mapvalue[r'$t'] != null) {
+            mapvalue = Map<String, dynamic>.from(mapvalue);
+            mapvalue[r'$t'] = cleanPersonName(mapvalue[r'$t']);
+          }
           personList.add(mapvalue);
-          //personList.add(mapvalue['\$t']);
         }
       } else {
         //There is only one value, which results in a map instead of a list.
-        Map mapvalue = eventmap['persons']['person'];
+        dynamic mapvalue = eventmap['persons']['person'];
+        if (mapvalue is Map && mapvalue[r'$t'] != null) {
+          mapvalue = Map<String, dynamic>.from(mapvalue);
+          mapvalue[r'$t'] = cleanPersonName(mapvalue[r'$t']);
+        }
         personList.add(mapvalue);
-        //personList.add(mapvalue['\$t']);
       }
     }
     if (eventmap['attachments'] != null && eventmap['attachments']['attachment'] != null) {
