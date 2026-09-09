@@ -9,9 +9,12 @@ import 'package:fosdem/screens/debug_page.dart';
 import 'package:fosdem/screens/event_view.dart';
 import 'package:fosdem/screens/eventlist.dart';
 import 'package:fosdem/screens/favoriteslist.dart';
+import 'package:fosdem/screens/person_view.dart';
+import 'package:fosdem/screens/personlist.dart';
 import 'package:fosdem/screens/scaffold.dart';
 import 'package:fosdem/screens/settings_view.dart';
 import 'package:fosdem/screens/tracklist.dart';
+import 'package:fosdem/screens/location_view.dart';
 import 'package:fosdem/screens/viewvideo.dart';
 import 'package:fosdem/utils/preferences.dart';
 import 'package:fosdem/utils/settings_controller.dart';
@@ -109,6 +112,8 @@ class _AppState extends State<App> {
         );
       case ScaffoldTab.tracklist:
         return TrackList(settingsController: widget.settingsController);
+      case ScaffoldTab.personlist:
+        return PersonList(settingsController: widget.settingsController);
       case ScaffoldTab.conferencelist:
         return ConferenceList(settingsController: widget.settingsController);
       case ScaffoldTab.settings:
@@ -136,7 +141,7 @@ class _AppState extends State<App> {
       // restorationId set for the route automatically
       GoRoute(
         path:
-            '/:tab(eventlist|favoriteslist|tracklist|conferencelist|settings)',
+            '/:tab(eventlist|favoriteslist|tracklist|personlist|conferencelist|settings)',
         pageBuilder: (BuildContext context, GoRouterState state) {
           final tab = ScaffoldTab.values.firstWhere(
               (e) => e.toString() == 'ScaffoldTab.${state.pathParameters['tab']!}');
@@ -158,13 +163,39 @@ class _AppState extends State<App> {
                 return EventView(
                     event: widget.settingsController.SelectedEvent,
                     controller: widget.settingsController);
-              })
+              }),
+          GoRoute(
+              path: 'personview',
+              builder: (BuildContext context, GoRouterState state) {
+                return PersonView(
+                    controller: widget.settingsController);
+              }),
+          GoRoute(
+              path: 'locationview',
+              builder: (BuildContext context, GoRouterState state) {
+                return LocationView(
+                    event: widget.settingsController.SelectedEvent,
+                    controller: widget.settingsController);
+              }),
         ],
       ),
       GoRoute(
           path: '/eventview',
           builder: (BuildContext context, GoRouterState state) {
             return EventView(
+                event: widget.settingsController.SelectedEvent,
+                controller: widget.settingsController);
+          }),
+      GoRoute(
+          path: '/personview',
+          builder: (BuildContext context, GoRouterState state) {
+            return PersonView(
+                controller: widget.settingsController);
+          }),
+      GoRoute(
+          path: '/locationview',
+          builder: (BuildContext context, GoRouterState state) {
+            return LocationView(
                 event: widget.settingsController.SelectedEvent,
                 controller: widget.settingsController);
           }),
