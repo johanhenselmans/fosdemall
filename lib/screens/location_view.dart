@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:fosdem/models/event.dart';
 import 'package:fosdem/utils/room_locations.dart';
 import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/utils/style.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:simple_gesture_detector/simple_gesture_detector.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -25,17 +28,23 @@ class LocationView extends StatefulWidget {
 class _LocationViewState extends State<LocationView> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late RoomLocationInfo _locationInfo;
+  final MapController _mapController = MapController();
+
+  LatLng? _userLocation;
+  StreamSubscription<Position>? _positionStream;
+  bool _isLocating = false;
+  String? _distanceText;
 
   @override
   void initState() {
     super.initState();
     _locationInfo = RoomLocationHelper.getLocationInfo(widget.event?.room);
-    // Determine default tab: if room plan is available, default to OSM (index 0), else index 0
     _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
   void dispose() {
+    _positionStream?.cancel();
     _tabController.dispose();
     super.dispose();
   }
@@ -45,6 +54,106 @@ class _LocationViewState extends State<LocationView> with SingleTickerProviderSt
       Navigator.of(context).pop();
     } else {
       GoRouter.of(context).go('/eventlist');
+    }
+  }
+
+  void _updateDistance() {
+    if (_userLocation != null) {
+      const distance = Distance();
+      final meters = distance.as(LengthUnit.Meter, _userLocation!, _locationInfo.coordinates);
+      if (meters < 1000) {
+        _distanceText = '${meters.round()} m away';
+      } else {
+        _distanceText = '${(meters / 1000).toStringAsFixed(1)} km away';
+      }
+    } else {
+      _distanceText = null;
+    }
+  }
+
+  Future<void> _startLocationTracking() async {
+    setState(() {
+      _isLocating = true;
+    });
+
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location services are disabled on your device.')),
+          );
+        }
+        setState(() => _isLocating = false);
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location permission was denied.')),
+            );
+          }
+          setState(() => _isLocating = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Location permission is permanently denied. Please enable in device settings.'),
+            ),
+          );
+        }
+        setState(() => _isLocating = false);
+        return;
+      }
+
+      // 1. Get current position to immediately place marker and center map
+      final currentPos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      if (mounted) {
+        setState(() {
+          _userLocation = LatLng(currentPos.latitude, currentPos.longitude);
+          _updateDistance();
+          _isLocating = false;
+        });
+        _mapController.move(_userLocation!, 17.5);
+      }
+
+      // 2. Stream subsequent position updates
+      await _positionStream?.cancel();
+      _positionStream = Geolocator.getPositionStream(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 3,
+        ),
+      ).listen((pos) {
+        if (mounted) {
+          setState(() {
+            _userLocation = LatLng(pos.latitude, pos.longitude);
+            _updateDistance();
+          });
+        }
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLocating = false);
+      }
+    }
+  }
+
+  void _onMyLocationPressed() {
+    if (_userLocation != null) {
+      _mapController.move(_userLocation!, 17.5);
+    } else {
+      _startLocationTracking();
     }
   }
 
@@ -199,9 +308,86 @@ class _LocationViewState extends State<LocationView> with SingleTickerProviderSt
   }
 
   Widget _buildOsmMapView() {
+    final markers = <Marker>[
+      // Target building marker
+      Marker(
+        point: _locationInfo.coordinates,
+        width: 90,
+        height: 90,
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: fosdemBlue,
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
+                ],
+              ),
+              child: Text(
+                _locationInfo.buildingCode,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.location_on,
+              color: Colors.red,
+              size: 40,
+            ),
+          ],
+        ),
+      ),
+    ];
+
+    // Live User Location Marker ("blue dot")
+    if (_userLocation != null) {
+      markers.add(
+        Marker(
+          point: _userLocation!,
+          width: 44,
+          height: 44,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.25),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Colors.blue[700],
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Stack(
       children: [
         FlutterMap(
+          mapController: _mapController,
           options: MapOptions(
             initialCenter: _locationInfo.coordinates,
             initialZoom: 17.5,
@@ -214,45 +400,80 @@ class _LocationViewState extends State<LocationView> with SingleTickerProviderSt
               userAgentPackageName: 'org.fosdem.fosdemall',
             ),
             MarkerLayer(
-              markers: [
-                Marker(
-                  point: _locationInfo.coordinates,
-                  width: 90,
-                  height: 90,
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: fosdemBlue,
-                          borderRadius: BorderRadius.circular(6),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black38, blurRadius: 4, offset: Offset(0, 2)),
-                          ],
-                        ),
-                        child: Text(
-                          _locationInfo.buildingCode,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      const Icon(
-                        Icons.location_on,
-                        color: Colors.red,
-                        size: 40,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              markers: markers,
+            ),
+            SimpleAttributionWidget(
+              alignment: Alignment.bottomLeft,
+              source: const Text('© OpenStreetMap contributors'),
+              onTap: () => launchUrl(
+                Uri.parse('https://openstreetmap.org/copyright'),
+                mode: LaunchMode.externalApplication,
+              ),
             ),
           ],
         ),
 
-        // Floating Action Card at the bottom with navigation
+        // OpenStreetMap Attribution Badge (Top-Left overlay, un-obscured)
+        Positioned(
+          left: 12,
+          top: 12,
+          child: InkWell(
+            onTap: () => launchUrl(
+              Uri.parse('https://openstreetmap.org/copyright'),
+              mode: LaunchMode.externalApplication,
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.92),
+                borderRadius: BorderRadius.circular(6),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1)),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info_outline, size: 14, color: Colors.blue[800]),
+                  const SizedBox(width: 4),
+                  Text(
+                    '© OpenStreetMap contributors',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.blue[800],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+
+        // "My Location" Floating Action Button on the map
+        Positioned(
+          right: 16,
+          bottom: 150,
+          child: FloatingActionButton.small(
+            heroTag: 'btnMyLocation',
+            onPressed: _onMyLocationPressed,
+            backgroundColor: Colors.white,
+            foregroundColor: _userLocation != null ? Colors.blue[700] : Colors.grey[700],
+            tooltip: 'My Location',
+            child: _isLocating
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    _userLocation != null ? Icons.my_location : Icons.location_searching,
+                  ),
+          ),
+        ),
+
+        // Floating Action Card at the bottom with navigation & distance
         Positioned(
           left: 16,
           right: 16,
@@ -260,7 +481,7 @@ class _LocationViewState extends State<LocationView> with SingleTickerProviderSt
           child: Card(
             elevation: 6,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            color: Colors.white.withOpacity(0.95),
+            color: Colors.white.withOpacity(0.96),
             child: Padding(
               padding: const EdgeInsets.all(12.0),
               child: Column(
@@ -282,12 +503,42 @@ class _LocationViewState extends State<LocationView> with SingleTickerProviderSt
                                 fontSize: 14,
                               ),
                             ),
-                            Text(
-                              "Room: ${_locationInfo.roomName}",
-                              style: TextStyle(
-                                color: Colors.grey[700],
-                                fontSize: 12,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  "Room: ${_locationInfo.roomName}",
+                                  style: TextStyle(
+                                    color: Colors.grey[700],
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                if (_distanceText != null) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue[50],
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.blue[200]!),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.directions_walk, size: 12, color: Colors.blue[800]),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          _distanceText!,
+                                          style: TextStyle(
+                                            color: Colors.blue[800],
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ],
                         ),
