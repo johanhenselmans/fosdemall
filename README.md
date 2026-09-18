@@ -14,7 +14,8 @@ and the search did not work any more on their latest iterations of IOS.
 
 I decided to do a complete rewrite in Flutter, as I am more used to Flutter
 nowadays that I ever was to Obj-C. The publication and useability of VLCkit via 
-flutter_vlc_player made this possible.  
+flutter_vlc_player made this possible.  At the moment vlc is not used, I am waiting for 
+A Swift Package Manager version.
 
 And as I am not interested anymore in products of a company that maximizes
 profits instead of user satisfaction and useability, it was time to move on
