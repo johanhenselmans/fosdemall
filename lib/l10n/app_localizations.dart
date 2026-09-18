@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
+import 'app_localizations_fr.dart';
 import 'app_localizations_nl.dart';
 
 // ignore_for_file: type=lint
@@ -95,6 +96,7 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
+    Locale('fr'),
     Locale('nl'),
   ];
 
@@ -103,6 +105,186 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fosdem'**
   String get appTitle;
+
+  /// No description provided for @navEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get navEvents;
+
+  /// No description provided for @navFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get navFavorites;
+
+  /// No description provided for @navTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracks'**
+  String get navTracks;
+
+  /// No description provided for @navPersons.
+  ///
+  /// In en, this message translates to:
+  /// **'Persons'**
+  String get navPersons;
+
+  /// No description provided for @navYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Years'**
+  String get navYears;
+
+  /// No description provided for @navSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get navSettings;
+
+  /// No description provided for @titleTracksAllYears.
+  ///
+  /// In en, this message translates to:
+  /// **'tracks of all years'**
+  String get titleTracksAllYears;
+
+  /// No description provided for @titleTrackForAllYears.
+  ///
+  /// In en, this message translates to:
+  /// **'{track} - track for all years'**
+  String titleTrackForAllYears(String track);
+
+  /// No description provided for @titleFavoritesAllYears.
+  ///
+  /// In en, this message translates to:
+  /// **'favorites of all years'**
+  String get titleFavoritesAllYears;
+
+  /// No description provided for @titlePersonsAllYears.
+  ///
+  /// In en, this message translates to:
+  /// **'persons of all years'**
+  String get titlePersonsAllYears;
+
+  /// No description provided for @btnBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get btnBack;
+
+  /// No description provided for @btnBackToEvent.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Event'**
+  String get btnBackToEvent;
+
+  /// No description provided for @btnLaunchExternalApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch External App'**
+  String get btnLaunchExternalApp;
+
+  /// No description provided for @btnOpenVideoExternally.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Video Externally'**
+  String get btnOpenVideoExternally;
+
+  /// No description provided for @searchEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Events'**
+  String get searchEvents;
+
+  /// No description provided for @searchFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Favorites'**
+  String get searchFavorites;
+
+  /// No description provided for @searchTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Tracks'**
+  String get searchTracks;
+
+  /// No description provided for @searchPersons.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Persons'**
+  String get searchPersons;
+
+  /// No description provided for @searchConferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Search Conferences'**
+  String get searchConferences;
+
+  /// No description provided for @loadingEvents.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading events...'**
+  String get loadingEvents;
+
+  /// No description provided for @loadingFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading favorites...'**
+  String get loadingFavorites;
+
+  /// No description provided for @loadingTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading tracks...'**
+  String get loadingTracks;
+
+  /// No description provided for @loadingPersons.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading persons...'**
+  String get loadingPersons;
+
+  /// No description provided for @loadingConferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading conferences...'**
+  String get loadingConferences;
+
+  /// No description provided for @settingFavoritesAllYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Display favorites of all years'**
+  String get settingFavoritesAllYears;
+
+  /// No description provided for @settingTracksAllYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Display tracks of all years'**
+  String get settingTracksAllYears;
+
+  /// No description provided for @settingPersonsAllYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Display persons of all years'**
+  String get settingPersonsAllYears;
+
+  /// No description provided for @videoFormatNoticeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Video Format Notice'**
+  String get videoFormatNoticeTitle;
+
+  /// No description provided for @videoFormatNoticeContent.
+  ///
+  /// In en, this message translates to:
+  /// **'iOS can only play AV1/webm on iPhone 15 or later. You can choose to go back to the event for an MP4 link or launch the WebM video in an external app or browser.'**
+  String get videoFormatNoticeContent;
+
+  /// No description provided for @noItemsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No items found'**
+  String get noItemsFound;
 }
 
 class _AppLocalizationsDelegate
@@ -116,7 +298,7 @@ class _AppLocalizationsDelegate
 
   @override
   bool isSupported(Locale locale) =>
-      <String>['en', 'nl'].contains(locale.languageCode);
+      <String>['en', 'fr', 'nl'].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -127,6 +309,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   switch (locale.languageCode) {
     case 'en':
       return AppLocalizationsEn();
+    case 'fr':
+      return AppLocalizationsFr();
     case 'nl':
       return AppLocalizationsNl();
   }
