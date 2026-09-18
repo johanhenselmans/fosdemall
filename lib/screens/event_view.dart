@@ -86,8 +86,11 @@ class _EventViewState extends State<EventView> {
   }
 
   void _gohome() {
-    GoRouter.of(context).pushReplacement('/');
-    //GoRouter.of(context).go('/');
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      GoRouter.of(context).go('/eventlist');
+    }
   }
 
   List getLinkList() {

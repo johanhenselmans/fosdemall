@@ -895,7 +895,9 @@ class DatabaseHelper extends ChangeNotifier {
 
     if (controller.selectedPersonsFromAllYears == true) {
       rows = await dbClient.rawQuery('''
-        SELECT p.* FROM person p
+        SELECT p.id, p.person_id, p.person_name, p.person_ascii_name, p.person_picture_url, p.description_year, p.picture_year,
+               CASE WHEN p.person_picture IS NOT NULL AND LENGTH(p.person_picture) > 0 THEN 1 ELSE 0 END as has_picture
+        FROM person p
         WHERE p.person_name IS NOT NULL AND p.person_name != ''
         ORDER BY p.person_name COLLATE NOCASE ASC
       ''');
@@ -915,7 +917,9 @@ class DatabaseHelper extends ChangeNotifier {
       if (names.isNotEmpty) {
         final placeholders = List.filled(names.length, '?').join(',');
         rows = await dbClient.rawQuery('''
-          SELECT DISTINCT p.* FROM person p
+          SELECT DISTINCT p.id, p.person_id, p.person_name, p.person_ascii_name, p.person_picture_url, p.description_year, p.picture_year,
+                 CASE WHEN p.person_picture IS NOT NULL AND LENGTH(p.person_picture) > 0 THEN 1 ELSE 0 END as has_picture
+          FROM person p
           WHERE p.person_name IN ($placeholders) OR p.person_ascii_name IN ($placeholders)
           ORDER BY p.person_name COLLATE NOCASE ASC
         ''', [...names, ...names]);

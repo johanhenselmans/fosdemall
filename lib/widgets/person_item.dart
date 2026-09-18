@@ -27,7 +27,8 @@ class PersonItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasPicture = person.picture != null && person.picture!.isNotEmpty;
+    final hasLoadedPicture = person.picture != null && person.picture!.isNotEmpty;
+    final isPictureAvailable = hasLoadedPicture || person.hasPicture == true;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -58,10 +59,14 @@ class PersonItem extends StatelessWidget {
               CircleAvatar(
                 radius: 28,
                 backgroundColor: fosdemBlue.withAlpha(50),
-                backgroundImage: hasPicture ? MemoryImage(person.picture!) : null,
-                onBackgroundImageError: hasPicture ? (exception, stackTrace) {} : null,
-                child: !hasPicture
-                    ? const Icon(Icons.person, size: 30, color: fosdemBlue)
+                backgroundImage: hasLoadedPicture ? MemoryImage(person.picture!) : null,
+                onBackgroundImageError: hasLoadedPicture ? (exception, stackTrace) {} : null,
+                child: !hasLoadedPicture
+                    ? Icon(
+                        isPictureAvailable ? Icons.person : Icons.person_off,
+                        size: 30,
+                        color: isPictureAvailable ? fosdemBlue : Colors.grey[600],
+                      )
                     : null,
               ),
               const SizedBox(width: 14),

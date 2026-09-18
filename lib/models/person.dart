@@ -43,6 +43,8 @@ class Person extends ChangeNotifier {
   @JsonKey(includeFromJson: false, includeToJson: false)
   int? pictureYear;
   @JsonKey(includeFromJson: false, includeToJson: false)
+  bool? hasPicture;
+  @JsonKey(includeFromJson: false, includeToJson: false)
   List<Event>? events;
 
   /// A necessary factory constructor for creating a new Event instance
@@ -66,7 +68,8 @@ class Person extends ChangeNotifier {
     }
     final rawName = map['person_name'] ?? map['name'] ?? map[r'$t'];
     final rawDesc = map['person_description'];
-    return Person(
+    final bool hasPic = (picBytes != null && picBytes.isNotEmpty) || map['has_picture'] == 1;
+    final p = Person(
       map['id'] is int
           ? map['id']
           : (map['person_id'] is int
@@ -84,6 +87,8 @@ class Person extends ChangeNotifier {
           ? map['picture_year']
           : int.tryParse(map['picture_year']?.toString() ?? ''),
     );
+    p.hasPicture = hasPic;
+    return p;
   }
 
   Person.fromMapToObject(dynamic obj) {
