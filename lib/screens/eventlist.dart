@@ -24,29 +24,37 @@ class EventList extends StatefulWidget {
 class _EventListState extends State<EventList> {
   DatabaseHelper databaseHelper = DatabaseHelper();
   List<Event>? eventList = [];
-  final TextEditingController _controller = TextEditingController();
+  late Future<List<Event>> _eventsFuture;
 
   @override
   void initState() {
     super.initState();
+    _eventsFuture = getEventList();
     widget.settingsController.addListener(_handleSettingsChanged);
-    //if(widget.settingsController.searchEvent.isNotEmpty){
-    //  _controller.text = widget.settingsController.searchEvent;
-    //}
+    databaseHelper.addListener(_handleDbChanged);
   }
-
 
   @override
   void dispose() {
     widget.settingsController.removeListener(_handleSettingsChanged);
-    //widget.controller.removeListener(_handleFosdemChanged);
+    databaseHelper.removeListener(_handleDbChanged);
     super.dispose();
   }
 
   void _handleSettingsChanged() {
-    if (widget.settingsController.fosdemCurrentYear != "") {
+    if (mounted) {
+      setState(() {
+        _eventsFuture = getEventList();
+      });
     }
-    setState(() {});
+  }
+
+  void _handleDbChanged() {
+    if (mounted) {
+      setState(() {
+        _eventsFuture = getEventList();
+      });
+    }
   }
 
 
@@ -156,7 +164,7 @@ class _EventListState extends State<EventList> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: FutureBuilder<List<Event>>(
-          future: getEventList(),
+          future: _eventsFuture,
           builder:
               (BuildContext context, AsyncSnapshot<List<Event>> snapshot) {
             if (snapshot.hasData) {

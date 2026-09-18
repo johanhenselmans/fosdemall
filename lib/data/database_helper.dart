@@ -891,23 +891,37 @@ class DatabaseHelper extends ChangeNotifier {
 
   Future<List<Person>> getPersonsFromDb(int year, SettingsController controller) async {
     final dbClient = await db;
-    List<Map> rows;
+    List<Map<String, Object?>> rows;
 
     if (controller.selectedPersonsFromAllYears == true) {
       rows = await dbClient.rawQuery('''
         SELECT p.* FROM person p
+        WHERE p.person_name IS NOT NULL AND p.person_name != ''
         ORDER BY p.person_name COLLATE NOCASE ASC
       ''');
     } else {
-      rows = await dbClient.rawQuery('''
-        SELECT DISTINCT p.* FROM person p
-        JOIN (
-          SELECT json_extract(value, '\$.id') as pid, json_extract(value, '\$.\u0024t') as pname 
-          FROM Event, json_each(Event.persons)
-          WHERE Event.year = ?
-        ) ep ON p.person_name = ep.pname OR p.person_ascii_name = ep.pname OR (p.person_id = ep.pid AND p.person_name = ep.pname)
-        ORDER BY p.person_name COLLATE NOCASE ASC
+      final epRows = await dbClient.rawQuery('''
+        SELECT DISTINCT json_extract(value, '\$.\$t') as pname
+        FROM Event, json_each(Event.persons)
+        WHERE Event.year = ? AND json_extract(value, '\$.\$t') IS NOT NULL
       ''', [year]);
+
+      final names = epRows
+          .map((r) => r['pname']?.toString().trim())
+          .whereType<String>()
+          .where((s) => s.isNotEmpty)
+          .toSet();
+
+      if (names.isNotEmpty) {
+        final placeholders = List.filled(names.length, '?').join(',');
+        rows = await dbClient.rawQuery('''
+          SELECT DISTINCT p.* FROM person p
+          WHERE p.person_name IN ($placeholders) OR p.person_ascii_name IN ($placeholders)
+          ORDER BY p.person_name COLLATE NOCASE ASC
+        ''', [...names, ...names]);
+      } else {
+        rows = [];
+      }
     }
 
     if (rows.isEmpty) {
@@ -1171,7 +1185,7 @@ class DatabaseHelper extends ChangeNotifier {
       try {
         final resp = await client.get(
           Uri.parse(url),
-          headers: {'User-Agent': 'FosdemSpeakerScraper/1.0 (+https://archive.fosdem.org)'},
+          headers: {'User-Agent': 'Fosdem4All/1.0 (+https://www.netsense.nl; contact: fosdem@netsense.nl)'},
         ).timeout(const Duration(seconds: 20));
 
         if (resp.statusCode == 200 || resp.statusCode == 404) {

@@ -50,7 +50,7 @@ void main() async {
   DatabaseHelper dbhelper = DatabaseHelper();
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dbhelper.updateEventsFromInternet(year: currentyear.toString());
+  dbhelper.updateEventsFromInternet(year: currentyear.toString());
   runApp(
     MultiProvider(
       providers: [
@@ -130,7 +130,6 @@ class _AppState extends State<App> {
       routerConfig: _router,
       title: 'Fosdem',
       debugShowCheckedModeBanner: false,
-      restorationScopeId: 'app',
       localizationsDelegates:  AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
     );
@@ -216,7 +215,7 @@ class _AppState extends State<App> {
     // redirect to the login page if the user is not logged in
     redirect: (BuildContext context, GoRouterState state) {
       if (state.uri.toString() == '' || state.uri.toString() == '/') {
-        return '/eventlist';
+        return '/conferencelist';
       }
       // no need to redirect at all
       return null;

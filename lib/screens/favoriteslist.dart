@@ -24,21 +24,37 @@ class FavoritesList extends StatefulWidget {
 class _FavoritesListState extends State<FavoritesList> {
   DatabaseHelper databaseHelper = DatabaseHelper();
   List<Event>? eventList = [];
+  late Future<List<Event>> _favoritesFuture;
 
   @override
   void initState() {
     super.initState();
+    _favoritesFuture = getFavoritesList();
     widget.settingsController.addListener(_handleSettingsChanged);
+    databaseHelper.addListener(_handleDbChanged);
   }
 
   @override
   void dispose() {
     widget.settingsController.removeListener(_handleSettingsChanged);
+    databaseHelper.removeListener(_handleDbChanged);
     super.dispose();
   }
 
   void _handleSettingsChanged() {
-    setState(() {});
+    if (mounted) {
+      setState(() {
+        _favoritesFuture = getFavoritesList();
+      });
+    }
+  }
+
+  void _handleDbChanged() {
+    if (mounted) {
+      setState(() {
+        _favoritesFuture = getFavoritesList();
+      });
+    }
   }
 
   void _displayAlert(String aText, BuildContext context) {
@@ -134,7 +150,7 @@ class _FavoritesListState extends State<FavoritesList> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: FutureBuilder<List<Event>>(
-          future: getFavoritesList(),
+          future: _favoritesFuture,
           builder:
               (BuildContext context, AsyncSnapshot<List<Event>> snapshot) {
             if (snapshot.hasData) {
