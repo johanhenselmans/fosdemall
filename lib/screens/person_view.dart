@@ -143,7 +143,7 @@ class _PersonViewState extends State<PersonView> {
 
           return Container(
             margin: const EdgeInsets.only(top: 16),
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.only(left: 8.0),
             decoration: BoxDecoration(
               color: Colors.orange.withOpacity(0.06),
               borderRadius: BorderRadius.circular(10),
@@ -176,7 +176,7 @@ class _PersonViewState extends State<PersonView> {
         }
 
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12.0),
           decoration: BoxDecoration(
             color: Colors.grey[100],
             borderRadius: BorderRadius.circular(10),
@@ -208,7 +208,7 @@ class _PersonViewState extends State<PersonView> {
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : ListView(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(12.0),
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -278,7 +278,7 @@ class _PersonViewState extends State<PersonView> {
                     const SizedBox(height: 12),
                     if (_events.isEmpty)
                       Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(8),
                         child: const Text(
                           "No events found for this speaker.",
                           style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),

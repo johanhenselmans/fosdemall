@@ -24,21 +24,37 @@ class PersonList extends StatefulWidget {
 class _PersonListState extends State<PersonList> {
   final DatabaseHelper databaseHelper = DatabaseHelper();
   List<Person>? personList = [];
+  late Future<List<Person>> _personsFuture;
 
   @override
   void initState() {
     super.initState();
+    _personsFuture = getPersonsList();
     widget.settingsController.addListener(_handleSettingsChanged);
+    databaseHelper.addListener(_handleDbChanged);
   }
 
   @override
   void dispose() {
     widget.settingsController.removeListener(_handleSettingsChanged);
+    databaseHelper.removeListener(_handleDbChanged);
     super.dispose();
   }
 
   void _handleSettingsChanged() {
-    setState(() {});
+    if (mounted) {
+      setState(() {
+        _personsFuture = getPersonsList();
+      });
+    }
+  }
+
+  void _handleDbChanged() {
+    if (mounted) {
+      setState(() {
+        _personsFuture = getPersonsList();
+      });
+    }
   }
 
   Future<List<Person>> getPersonsList() async {
@@ -67,7 +83,6 @@ class _PersonListState extends State<PersonList> {
         ],
       ),
       asyncListCallback: () async {
-        await Future.delayed(const Duration(milliseconds: 300));
         return persons;
       },
       asyncListFilter: (q, aList) async {
@@ -96,7 +111,7 @@ class _PersonListState extends State<PersonList> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: FutureBuilder<List<Person>>(
-        future: getPersonsList(),
+        future: _personsFuture,
         builder: (BuildContext context, AsyncSnapshot<List<Person>> snapshot) {
           if (snapshot.hasData) {
             personList = snapshot.data;
