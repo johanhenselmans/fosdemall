@@ -1,0 +1,6 @@
+{
+  "appTitle": "Fosdem",
+  "@appTitle": {
+    "description": "Le titre de l'application"
+  }
+}

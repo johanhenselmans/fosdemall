@@ -2,5 +2,42 @@
   "appTitle": "Fosdem",
   "@appTitle": {
     "description": "The title of the application"
-  }
+  },
+  "navEvents": "Events",
+  "navFavorites": "Favorites",
+  "navTracks": "Tracks",
+  "navPersons": "Persons",
+  "navYears": "Years",
+  "navSettings": "Settings",
+  "titleTracksAllYears": "tracks of all years",
+  "titleTrackForAllYears": "{track} - track for all years",
+  "@titleTrackForAllYears": {
+    "placeholders": {
+      "track": {
+        "type": "String"
+      }
+    }
+  },
+  "titleFavoritesAllYears": "favorites of all years",
+  "titlePersonsAllYears": "persons of all years",
+  "btnBack": "Back",
+  "btnBackToEvent": "Back to Event",
+  "btnLaunchExternalApp": "Launch External App",
+  "btnOpenVideoExternally": "Open Video Externally",
+  "searchEvents": "Search Events",
+  "searchFavorites": "Search Favorites",
+  "searchTracks": "Search Tracks",
+  "searchPersons": "Search Persons",
+  "searchConferences": "Search Conferences",
+  "loadingEvents": "Loading events...",
+  "loadingFavorites": "Loading favorites...",
+  "loadingTracks": "Loading tracks...",
+  "loadingPersons": "Loading persons...",
+  "loadingConferences": "Loading conferences...",
+  "settingFavoritesAllYears": "Display favorites of all years",
+  "settingTracksAllYears": "Display tracks of all years",
+  "settingPersonsAllYears": "Display persons of all years",
+  "videoFormatNoticeTitle": "Video Format Notice",
+  "videoFormatNoticeContent": "iOS can only play AV1/webm on iPhone 15 or later. You can choose to go back to the event for an MP4 link or launch the WebM video in an external app or browser.",
+  "noItemsFound": "No items found"
 }

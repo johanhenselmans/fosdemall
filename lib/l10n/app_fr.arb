@@ -1,0 +1,43 @@
+{
+  "appTitle": "Fosdem",
+  "@appTitle": {
+    "description": "Le titre de l'application"
+  },
+  "navEvents": "Événements",
+  "navFavorites": "Favoris",
+  "navTracks": "Parcours",
+  "navPersons": "Intervenants",
+  "navYears": "Années",
+  "navSettings": "Paramètres",
+  "titleTracksAllYears": "parcours de toutes les années",
+  "titleTrackForAllYears": "{track} - parcours pour toutes les années",
+  "@titleTrackForAllYears": {
+    "placeholders": {
+      "track": {
+        "type": "String"
+      }
+    }
+  },
+  "titleFavoritesAllYears": "favoris de toutes les années",
+  "titlePersonsAllYears": "intervenants de toutes les années",
+  "btnBack": "Retour",
+  "btnBackToEvent": "Retour à l'événement",
+  "btnLaunchExternalApp": "Ouvrir l'application externe",
+  "btnOpenVideoExternally": "Ouvrir la vidéo à l'extérieur",
+  "searchEvents": "Rechercher des événements",
+  "searchFavorites": "Rechercher des favoris",
+  "searchTracks": "Rechercher des parcours",
+  "searchPersons": "Rechercher des intervenants",
+  "searchConferences": "Rechercher des conférences",
+  "loadingEvents": "Chargement des événements...",
+  "loadingFavorites": "Chargement des favoris...",
+  "loadingTracks": "Chargement des parcours...",
+  "loadingPersons": "Chargement des intervenants...",
+  "loadingConferences": "Chargement des conférences...",
+  "settingFavoritesAllYears": "Afficher les favoris de toutes les années",
+  "settingTracksAllYears": "Afficher les parcours de toutes les années",
+  "settingPersonsAllYears": "Afficher les intervenants de toutes les années",
+  "videoFormatNoticeTitle": "Avis sur le format vidéo",
+  "videoFormatNoticeContent": "iOS ne peut lire les vidéos AV1/webm que sur l'iPhone 15 ou ultérieur. Vous pouvez retourner à l'événement pour choisir un lien MP4 ou ouvrir la vidéo WebM dans une application externe.",
+  "noItemsFound": "Aucun élément trouvé"
+}

@@ -2,5 +2,42 @@
   "appTitle": "Fosdem",
   "@appTitle": {
     "description": "De titel van het programma"
-  }
+  },
+  "navEvents": "Evenementen",
+  "navFavorites": "Favorieten",
+  "navTracks": "Tracks",
+  "navPersons": "Sprekers",
+  "navYears": "Jaren",
+  "navSettings": "Instellingen",
+  "titleTracksAllYears": "tracks van alle jaren",
+  "titleTrackForAllYears": "{track} - track voor alle jaren",
+  "@titleTrackForAllYears": {
+    "placeholders": {
+      "track": {
+        "type": "String"
+      }
+    }
+  },
+  "titleFavoritesAllYears": "favorieten van alle jaren",
+  "titlePersonsAllYears": "sprekers van alle jaren",
+  "btnBack": "Terug",
+  "btnBackToEvent": "Terug naar evenement",
+  "btnLaunchExternalApp": "Externe app openen",
+  "btnOpenVideoExternally": "Video extern openen",
+  "searchEvents": "Zoek evenementen",
+  "searchFavorites": "Zoek favorieten",
+  "searchTracks": "Zoek tracks",
+  "searchPersons": "Zoek sprekers",
+  "searchConferences": "Zoek conferenties",
+  "loadingEvents": "Evenementen laden...",
+  "loadingFavorites": "Favorieten laden...",
+  "loadingTracks": "Tracks laden...",
+  "loadingPersons": "Sprekers laden...",
+  "loadingConferences": "Conferenties laden...",
+  "settingFavoritesAllYears": "Toon favorieten van alle jaren",
+  "settingTracksAllYears": "Toon tracks van alle jaren",
+  "settingPersonsAllYears": "Toon sprekers van alle jaren",
+  "videoFormatNoticeTitle": "Videoformaat melding",
+  "videoFormatNoticeContent": "iOS kan alleen AV1/webm afspelen op iPhone 15 of nieuwer. U kunt teruggaan naar het evenement voor een MP4-link of de WebM-video in een externe app of browser openen.",
+  "noItemsFound": "Geen items gevonden"
 }

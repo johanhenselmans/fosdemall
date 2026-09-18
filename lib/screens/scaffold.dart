@@ -4,6 +4,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:fosdem/l10n/app_localizations.dart';
 import 'package:fosdem/utils/style.dart';
 import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/widgets/fosdem_app_bar.dart';
@@ -27,11 +28,12 @@ class FosdemScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final routeState = GoRouterState.of(context).uri.toString();
     final selectedIndex = _getSelectedIndex(routeState);
+    final l10n = AppLocalizations.of(context);
 
     return ListenableBuilder(
       listenable: settingsController,
       builder: (context, _) {
-        final title = _getTitle(selectedTab, settingsController);
+        final title = _getTitle(selectedTab, settingsController, l10n);
         return Scaffold(
           body: Stack(
             children: [
@@ -53,30 +55,30 @@ class FosdemScaffold extends StatelessWidget {
             onTap: (int value) => _onItemTapped(value, context),
             selectedItemColor: bottomNavigationBarSelectedItemColor,
             unselectedItemColor: bottomNavigationBarUnselectedItemColor,
-            items: const [
+            items: [
               BottomNavigationBarItem(
-                label: 'Events',
-                icon: Icon(Icons.chat_outlined),
+                label: l10n?.navEvents ?? 'Events',
+                icon: const Icon(Icons.chat_outlined),
               ),
               BottomNavigationBarItem(
-                label: 'Favorites',
-                icon: Icon(Icons.favorite),
+                label: l10n?.navFavorites ?? 'Favorites',
+                icon: const Icon(Icons.favorite),
               ),
               BottomNavigationBarItem(
-                label: 'Tracks',
-                icon: Icon(Icons.add_road),
+                label: l10n?.navTracks ?? 'Tracks',
+                icon: const Icon(Icons.add_road),
               ),
               BottomNavigationBarItem(
-                label: 'Persons',
-                icon: Icon(Icons.people),
+                label: l10n?.navPersons ?? 'Persons',
+                icon: const Icon(Icons.people),
               ),
               BottomNavigationBarItem(
-                label: 'Years',
-                icon: Icon(Icons.view_agenda),
+                label: l10n?.navYears ?? 'Years',
+                icon: const Icon(Icons.view_agenda),
               ),
               BottomNavigationBarItem(
-                label: 'Settings',
-                icon: Icon(Icons.settings),
+                label: l10n?.navSettings ?? 'Settings',
+                icon: const Icon(Icons.settings),
               ),
             ],
           ),
@@ -85,39 +87,40 @@ class FosdemScaffold extends StatelessWidget {
     );
   }
 
-  String _getTitle(ScaffoldTab tab, SettingsController controller) {
+  String _getTitle(ScaffoldTab tab, SettingsController controller, AppLocalizations? l10n) {
     switch (tab) {
       case ScaffoldTab.eventlist:
         if (controller.SelectedTrack != "") {
           if (controller.selectedTracksFromAllYears == true) {
-            return "${controller.SelectedTrack} - track for all years";
+            return l10n?.titleTrackForAllYears(controller.SelectedTrack) ??
+                "${controller.SelectedTrack} - track for all years";
           } else {
             return "FOSDEM ${controller.fosdemSelectedYear} - ${controller.SelectedTrack}";
           }
         }
         if (controller.selectedEventsFromAllYears == true) {
-          return "events of all years";
+          return l10n?.titleTracksAllYears ?? "events of all years";
         }
         return "FOSDEM ${controller.fosdemSelectedYear}";
       case ScaffoldTab.tracklist:
         if (controller.selectedTracksFromAllYears == true) {
-          return "tracks of all years";
+          return l10n?.titleTracksAllYears ?? "tracks of all years";
         }
         return "FOSDEM ${controller.fosdemSelectedYear}";
       case ScaffoldTab.personlist:
         if (controller.selectedPersonsFromAllYears == true) {
-          return "persons of all years";
+          return l10n?.titlePersonsAllYears ?? "persons of all years";
         }
         return "FOSDEM ${controller.fosdemSelectedYear}";
       case ScaffoldTab.conferencelist:
         return "FOSDEM ${controller.fosdemSelectedYear}";
       case ScaffoldTab.favoriteslist:
         if (controller.selectedFavoritesFromAllYears == true) {
-          return "favorites of all years";
+          return l10n?.titleFavoritesAllYears ?? "favorites of all years";
         }
         return "FOSDEM ${controller.fosdemSelectedYear}";
       case ScaffoldTab.settings:
-        return "Settings";
+        return l10n?.navSettings ?? "Settings";
     }
   }
 
