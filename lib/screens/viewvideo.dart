@@ -6,6 +6,7 @@ import 'package:fosdem/utils/style.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
+import 'package:vlc_player/vlc_player.dart';
 
 import '../utils/constants.dart';
 
@@ -19,14 +20,18 @@ class ViewVideo extends StatefulWidget {
       {super.key, required this.settingscontroller, required this.videoURL});
 
   @override
-  _ViewVideoState createState() => _ViewVideoState();
+  State<ViewVideo> createState() => _ViewVideoState();
 }
 
 class _ViewVideoState extends State<ViewVideo> {
-  VideoPlayerController? _controller;
+  VideoPlayerController? _videoPlayerController;
+  VlcPlayerController? _vlcPlayerController;
   bool _hasError = false;
   bool _dialogShown = false;
   Timer? _timer;
+
+  bool get _useVlcPlayer =>
+      Platform.isAndroid || Platform.isWindows || Platform.isLinux;
 
   void _goback() async {
     GoRouter.of(context).pop();
@@ -41,7 +46,7 @@ class _ViewVideoState extends State<ViewVideo> {
       }
     });
     _timer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
-      if (_controller != null && _controller!.value.isInitialized && _controller!.value.isPlaying) {
+      if (_isPlaying) {
         if (mounted) {
           setState(() {});
         }
@@ -50,6 +55,41 @@ class _ViewVideoState extends State<ViewVideo> {
   }
 
   Future<void> _initPlayer() async {
+    if (_useVlcPlayer) {
+      await _initVlcPlayer();
+    } else {
+      await _initVideoPlayer();
+    }
+  }
+
+  Future<void> _initVlcPlayer() async {
+    try {
+      _vlcPlayerController = VlcPlayerController(
+        mediaSource: VlcMediaSource(uri: Uri.parse(widget.videoURL)),
+        autoPlay: true,
+      );
+      _vlcPlayerController!.addListener(() {
+        if (mounted) {
+          if (_vlcPlayerController!.value.hasError) {
+            setState(() {
+              _hasError = true;
+            });
+          } else {
+            setState(() {});
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint("VLC initialization error: $e");
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _initVideoPlayer() async {
     final isWebM = widget.videoURL.toLowerCase().contains('.webm') ||
                    widget.videoURL.toLowerCase().contains('av1');
 
@@ -59,17 +99,17 @@ class _ViewVideoState extends State<ViewVideo> {
     }
 
     try {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoURL));
-      await _controller!.initialize();
-      _controller!.addListener(() {
+      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.videoURL));
+      await _videoPlayerController!.initialize();
+      _videoPlayerController!.addListener(() {
         if (mounted) setState(() {});
       });
       if (mounted) {
         setState(() {});
-        _controller!.play();
+        _videoPlayerController!.play();
       }
     } catch (e) {
-      print("Video initialization error: $e");
+      debugPrint("Video initialization error: $e");
       if (mounted) {
         if (Platform.isIOS && isWebM) {
           _showIosWebmPopup();
@@ -80,6 +120,74 @@ class _ViewVideoState extends State<ViewVideo> {
         }
       }
     }
+  }
+
+  bool get _isPlaying {
+    if (_useVlcPlayer) {
+      return _vlcPlayerController?.value.isPlaying ?? false;
+    }
+    return _videoPlayerController?.value.isPlaying ?? false;
+  }
+
+  bool get _isInitialized {
+    if (_useVlcPlayer) {
+      return _vlcPlayerController != null && _vlcPlayerController!.value.isReady;
+    }
+    return _videoPlayerController != null && _videoPlayerController!.value.isInitialized;
+  }
+
+  Duration get _position {
+    if (_useVlcPlayer) {
+      return _vlcPlayerController?.value.position ?? Duration.zero;
+    }
+    return _videoPlayerController?.value.position ?? Duration.zero;
+  }
+
+  Duration get _duration {
+    if (_useVlcPlayer) {
+      return _vlcPlayerController?.value.duration ?? Duration.zero;
+    }
+    return _videoPlayerController?.value.duration ?? Duration.zero;
+  }
+
+  double get _aspectRatio {
+    if (_useVlcPlayer) {
+      final size = _vlcPlayerController?.value.videoSize;
+      if (size != null && size.width > 0 && size.height > 0) {
+        return size.width / size.height;
+      }
+      return 16.0 / 9.0;
+    }
+    if (_videoPlayerController != null && _videoPlayerController!.value.isInitialized) {
+      final ratio = _videoPlayerController!.value.aspectRatio;
+      return ratio > 0 ? ratio : 16.0 / 9.0;
+    }
+    return 16.0 / 9.0;
+  }
+
+  void _togglePlayPause() {
+    setState(() {
+      if (_useVlcPlayer && _vlcPlayerController != null) {
+        _vlcPlayerController!.value.isPlaying
+            ? _vlcPlayerController!.pause()
+            : _vlcPlayerController!.play();
+      } else if (_videoPlayerController != null) {
+        _videoPlayerController!.value.isPlaying
+            ? _videoPlayerController!.pause()
+            : _videoPlayerController!.play();
+      }
+    });
+  }
+
+  void _seekTo(int milliseconds) {
+    final target = Duration(milliseconds: milliseconds);
+    setState(() {
+      if (_useVlcPlayer && _vlcPlayerController != null) {
+        _vlcPlayerController!.seekTo(target);
+      } else if (_videoPlayerController != null) {
+        _videoPlayerController!.seekTo(target);
+      }
+    });
   }
 
   void _showIosWebmPopup() {
@@ -148,6 +256,22 @@ class _ViewVideoState extends State<ViewVideo> {
     return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
   }
 
+  Widget _buildVideoWidget() {
+    if (_useVlcPlayer) {
+      return AspectRatio(
+        aspectRatio: _aspectRatio,
+        child: VlcPlayer(
+          controller: _vlcPlayerController!,
+          fit: VlcVideoFit.contain,
+        ),
+      );
+    }
+    return AspectRatio(
+      aspectRatio: _aspectRatio,
+      child: VideoPlayer(_videoPlayerController!),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double aheight = MediaQuery.of(context).size.height;
@@ -210,32 +334,23 @@ class _ViewVideoState extends State<ViewVideo> {
                               ],
                             ),
                           )
-                        : (_controller != null && _controller!.value.isInitialized
+                        : (_isInitialized
                             ? Column(
                                 children: [
                                   Expanded(
                                     child: Stack(
                                       alignment: Alignment.center,
                                       children: [
-                                        AspectRatio(
-                                          aspectRatio: _controller!.value.aspectRatio,
-                                          child: VideoPlayer(_controller!),
-                                        ),
+                                        _buildVideoWidget(),
                                         IconButton(
                                           icon: Icon(
-                                            _controller!.value.isPlaying
+                                            _isPlaying
                                                 ? Icons.pause
                                                 : Icons.play_arrow,
                                             color: Colors.white,
                                             size: 50.0,
                                           ),
-                                          onPressed: () {
-                                            setState(() {
-                                              _controller!.value.isPlaying
-                                                  ? _controller!.pause()
-                                                  : _controller!.play();
-                                            });
-                                          },
+                                          onPressed: _togglePlayPause,
                                         ),
                                       ],
                                     ),
@@ -243,25 +358,19 @@ class _ViewVideoState extends State<ViewVideo> {
                                   const SizedBox(height: 8),
                                   // Slider / Scrollbar to position inside video
                                   Slider(
-                                    value: _controller!.value.position.inMilliseconds
+                                    value: _position.inMilliseconds
                                         .toDouble()
                                         .clamp(
                                           0.0,
-                                          _controller!.value.duration.inMilliseconds
-                                              .toDouble(),
+                                          _duration.inMilliseconds.toDouble() > 0
+                                              ? _duration.inMilliseconds.toDouble()
+                                              : 1.0,
                                         ),
                                     min: 0.0,
-                                    max: _controller!.value.duration.inMilliseconds
-                                            .toDouble() > 0
-                                        ? _controller!.value.duration.inMilliseconds
-                                            .toDouble()
+                                    max: _duration.inMilliseconds.toDouble() > 0
+                                        ? _duration.inMilliseconds.toDouble()
                                         : 1.0,
-                                    onChanged: (value) {
-                                      setState(() {
-                                        _controller!.seekTo(
-                                            Duration(milliseconds: value.toInt()));
-                                      });
-                                    },
+                                    onChanged: (value) => _seekTo(value.toInt()),
                                   ),
                                   // Time played and total time underneath
                                   Padding(
@@ -270,11 +379,11 @@ class _ViewVideoState extends State<ViewVideo> {
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
                                         Text(
-                                          _formatDuration(_controller!.value.position),
+                                          _formatDuration(_position),
                                           style: const TextStyle(fontWeight: FontWeight.bold),
                                         ),
                                         Text(
-                                          _formatDuration(_controller!.value.duration),
+                                          _formatDuration(_duration),
                                           style: const TextStyle(fontWeight: FontWeight.bold),
                                         ),
                                       ],
@@ -298,7 +407,8 @@ class _ViewVideoState extends State<ViewVideo> {
   @override
   void dispose() {
     _timer?.cancel();
-    _controller?.dispose();
+    _videoPlayerController?.dispose();
+    _vlcPlayerController?.dispose();
     super.dispose();
   }
 }

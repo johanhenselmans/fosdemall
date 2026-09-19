@@ -102,6 +102,8 @@ dependencies:
   #flutter_charset_detector: ^3.1.0
   path: any
   video_player: ^2.9.2
+  vlc_player:
+    path: plugins/vlc_player
   sqflite_common_ffi: any
   sprintf: ^7.0.0
   flutter_map: ^8.3.2
