@@ -76,7 +76,9 @@ class DatabaseHelper extends ChangeNotifier {
   Future<void> cleanPersonMojibakeInDb(Database theDb) async {
     try {
       final rows = await theDb.rawQuery(
-        "SELECT id, person_id, person_name, person_ascii_name, person_description, person_picture, person_picture_url, description_year, picture_year FROM person"
+        '''SELECT id, person_id, person_name, person_ascii_name, person_description, person_picture_url, description_year, picture_year,
+                  CASE WHEN person_picture IS NOT NULL AND LENGTH(person_picture) > 0 THEN 1 ELSE 0 END as has_picture
+           FROM person'''
       );
       if (rows.isEmpty) return;
 
@@ -118,8 +120,8 @@ class DatabaseHelper extends ChangeNotifier {
               final aDescLen = (a['person_description']?.toString() ?? '').length;
               final bDescLen = (b['person_description']?.toString() ?? '').length;
               if (aDescLen != bDescLen) return bDescLen.compareTo(aDescLen);
-              final aHasPic = a['person_picture'] != null ? 1 : 0;
-              final bHasPic = b['person_picture'] != null ? 1 : 0;
+              final aHasPic = (a['has_picture'] as num?)?.toInt() == 1 ? 1 : 0;
+              final bHasPic = (b['has_picture'] as num?)?.toInt() == 1 ? 1 : 0;
               if (aHasPic != bHasPic) return bHasPic.compareTo(aHasPic);
               return (a['id'] as int).compareTo(b['id'] as int);
             });
@@ -131,7 +133,8 @@ class DatabaseHelper extends ChangeNotifier {
             int mergedDescYear = primary['description_year'] is int
                 ? primary['description_year'] as int
                 : (int.tryParse(primary['description_year']?.toString() ?? '') ?? 0);
-            dynamic mergedPic = primary['person_picture'];
+            int bestPicId = primaryId as int;
+            bool hasBestPic = (primary['has_picture'] as num?)?.toInt() == 1;
             String? mergedPicUrl = primary['person_picture_url']?.toString();
             int mergedPicYear = primary['picture_year'] is int
                 ? primary['picture_year'] as int
@@ -143,6 +146,7 @@ class DatabaseHelper extends ChangeNotifier {
 
             for (int i = 1; i < group.length; i++) {
               final other = group[i];
+              final otherId = other['id'] as int;
               final otherDesc = cleanMojibake(other['person_description']?.toString() ?? '').trim();
               final otherDescYear = other['description_year'] is int
                   ? other['description_year'] as int
@@ -161,12 +165,13 @@ class DatabaseHelper extends ChangeNotifier {
                 }
               }
 
-              final otherPic = other['person_picture'];
+              final otherHasPic = (other['has_picture'] as num?)?.toInt() == 1;
               final otherPicYear = other['picture_year'] is int
                   ? other['picture_year'] as int
                   : (int.tryParse(other['picture_year']?.toString() ?? '') ?? 0);
-              if (otherPic != null && (mergedPic == null || otherPicYear >= mergedPicYear)) {
-                mergedPic = otherPic;
+              if (otherHasPic && (!hasBestPic || otherPicYear >= mergedPicYear)) {
+                bestPicId = otherId;
+                hasBestPic = true;
                 mergedPicUrl = other['person_picture_url']?.toString();
                 mergedPicYear = otherPicYear;
               }
@@ -181,8 +186,18 @@ class DatabaseHelper extends ChangeNotifier {
               if (mergedAscii.isEmpty && otherAscii.isNotEmpty) {
                 mergedAscii = otherAscii;
               }
+            }
 
-              await txn.delete('person', where: 'id = ?', whereArgs: [other['id']]);
+            // If a non-primary row has the best picture, copy it inside SQLite without pulling blob into memory
+            if (bestPicId != primaryId) {
+              await txn.rawUpdate(
+                'UPDATE person SET person_picture = (SELECT person_picture FROM person WHERE id = ?) WHERE id = ?',
+                [bestPicId, primaryId],
+              );
+            }
+
+            for (int i = 1; i < group.length; i++) {
+              await txn.delete('person', where: 'id = ?', whereArgs: [group[i]['id']]);
             }
 
             await txn.update(
@@ -192,7 +207,6 @@ class DatabaseHelper extends ChangeNotifier {
                 'person_ascii_name': mergedAscii,
                 if (mergedPid > 0) 'person_id': mergedPid,
                 'person_description': mergedDesc,
-                'person_picture': mergedPic,
                 'person_picture_url': mergedPicUrl,
                 'description_year': mergedDescYear,
                 'picture_year': mergedPicYear,
