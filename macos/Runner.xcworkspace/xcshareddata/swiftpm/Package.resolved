@@ -8,15 +8,6 @@
         "revision" : "32982d5fa66d40d59e8be38ace596a046ccd3918",
         "version" : "2.0.2"
       }
-    },
-    {
-      "identity" : "vlckit",
-      "kind" : "remoteSourceControl",
-      "location" : "https://code.videolan.org/videolan/VLCKit.git",
-      "state" : {
-        "revision" : "6cbc4e7b248aa51ec0906697abb30ecae47194b7",
-        "version" : "4.0.0-a24"
-      }
     }
   ],
   "version" : 2

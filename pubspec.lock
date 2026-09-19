@@ -1501,11 +1501,9 @@ packages:
   vlc_player:
     dependency: "direct main"
     description:
-      path: "."
-      ref: master
-      resolved-ref: "3ea2cf29646ee4ca4eebfba2ae18593aaf7f9db9"
-      url: "https://github.com/johanhenselmans/vlc_player.git"
-    source: git
+      path: "../vlc_player"
+      relative: true
+    source: path
     version: "2.1.3"
   vm_service:
     dependency: transitive
