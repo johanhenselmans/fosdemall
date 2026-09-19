@@ -103,7 +103,9 @@ dependencies:
   path: any
   video_player: ^2.9.2
   vlc_player:
-    path: plugins/vlc_player
+    git:
+      url: https://github.com/johanhenselmans/vlc_player.git
+      ref: master
   sqflite_common_ffi: any
   sprintf: ^7.0.0
   flutter_map: ^8.3.2

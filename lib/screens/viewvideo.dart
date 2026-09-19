@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fosdem/utils/settings_controller.dart';
 import 'package:fosdem/utils/style.dart';
@@ -27,26 +28,41 @@ class _ViewVideoState extends State<ViewVideo> {
   VideoPlayerController? _videoPlayerController;
   VlcPlayerController? _vlcPlayerController;
   bool _hasError = false;
-  bool _dialogShown = false;
   Timer? _timer;
+  double? _dragValue;
+  double? _pendingSeekTarget;
+  bool _isDragging = false;
 
-  bool get _useVlcPlayer =>
-      Platform.isAndroid || Platform.isWindows || Platform.isLinux;
+  bool get _useVlcPlayer => !kIsWeb;
 
   void _goback() async {
     GoRouter.of(context).pop();
   }
 
+  void _checkPendingSeek() {
+    if (_pendingSeekTarget != null) {
+      final posMs = _position.inMilliseconds.toDouble();
+      if ((posMs - _pendingSeekTarget!).abs() < 1000) {
+        _pendingSeekTarget = null;
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _initPlayer();
-      }
-    });
+    if (_useVlcPlayer) {
+      _initVlcPlayer();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _initVideoPlayer();
+        }
+      });
+    }
     _timer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
-      if (_isPlaying) {
+      _checkPendingSeek();
+      if (!_isDragging && _isPlaying) {
         if (mounted) {
           setState(() {});
         }
@@ -54,18 +70,11 @@ class _ViewVideoState extends State<ViewVideo> {
     });
   }
 
-  Future<void> _initPlayer() async {
-    if (_useVlcPlayer) {
-      await _initVlcPlayer();
-    } else {
-      await _initVideoPlayer();
-    }
-  }
-
-  Future<void> _initVlcPlayer() async {
+  void _initVlcPlayer() {
     try {
+      final cleanUrl = widget.videoURL.trim();
       _vlcPlayerController = VlcPlayerController(
-        mediaSource: VlcMediaSource(uri: Uri.parse(widget.videoURL)),
+        mediaSource: VlcMediaSource(uri: Uri.parse(cleanUrl)),
         autoPlay: true,
       );
       _vlcPlayerController!.addListener(() {
@@ -75,7 +84,10 @@ class _ViewVideoState extends State<ViewVideo> {
               _hasError = true;
             });
           } else {
-            setState(() {});
+            _checkPendingSeek();
+            if (!_isDragging) {
+              setState(() {});
+            }
           }
         }
       });
@@ -90,16 +102,10 @@ class _ViewVideoState extends State<ViewVideo> {
   }
 
   Future<void> _initVideoPlayer() async {
-    final isWebM = widget.videoURL.toLowerCase().contains('.webm') ||
-                   widget.videoURL.toLowerCase().contains('av1');
-
-    if (Platform.isIOS && isWebM) {
-      _showIosWebmPopup();
-      return;
-    }
+    final cleanUrl = widget.videoURL.trim();
 
     try {
-      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.videoURL));
+      _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(cleanUrl));
       await _videoPlayerController!.initialize();
       _videoPlayerController!.addListener(() {
         if (mounted) setState(() {});
@@ -111,29 +117,46 @@ class _ViewVideoState extends State<ViewVideo> {
     } catch (e) {
       debugPrint("Video initialization error: $e");
       if (mounted) {
-        if (Platform.isIOS && isWebM) {
-          _showIosWebmPopup();
-        } else {
-          setState(() {
-            _hasError = true;
-          });
-        }
+        setState(() {
+          _hasError = true;
+        });
       }
     }
   }
 
   bool get _isPlaying {
     if (_useVlcPlayer) {
-      return _vlcPlayerController?.value.isPlaying ?? false;
+      final state = _vlcPlayerController?.value.state;
+      return state == VlcPlaybackState.playing ||
+          state == VlcPlaybackState.buffering;
     }
     return _videoPlayerController?.value.isPlaying ?? false;
   }
 
+  bool get _canRenderPlayer {
+    if (_useVlcPlayer) {
+      return _vlcPlayerController != null;
+    }
+    return _videoPlayerController != null &&
+        _videoPlayerController!.value.isInitialized;
+  }
+
   bool get _isInitialized {
     if (_useVlcPlayer) {
-      return _vlcPlayerController != null && _vlcPlayerController!.value.isReady;
+      if (_vlcPlayerController == null || !_vlcPlayerController!.isAttached) {
+        return false;
+      }
+      final val = _vlcPlayerController!.value;
+      if (val.hasError) return false;
+      return val.isReady ||
+          val.duration > Duration.zero ||
+          val.position > Duration.zero ||
+          val.state == VlcPlaybackState.playing ||
+          val.state == VlcPlaybackState.buffering ||
+          val.state == VlcPlaybackState.paused;
     }
-    return _videoPlayerController != null && _videoPlayerController!.value.isInitialized;
+    return _videoPlayerController != null &&
+        _videoPlayerController!.value.isInitialized;
   }
 
   Duration get _position {
@@ -166,80 +189,75 @@ class _ViewVideoState extends State<ViewVideo> {
   }
 
   void _togglePlayPause() {
-    setState(() {
-      if (_useVlcPlayer && _vlcPlayerController != null) {
-        _vlcPlayerController!.value.isPlaying
-            ? _vlcPlayerController!.pause()
-            : _vlcPlayerController!.play();
-      } else if (_videoPlayerController != null) {
+    if (_useVlcPlayer) {
+      if (_vlcPlayerController != null && _vlcPlayerController!.isAttached) {
+        setState(() {
+          _isPlaying
+              ? _vlcPlayerController!.pause()
+              : _vlcPlayerController!.play();
+        });
+      }
+    } else if (_videoPlayerController != null &&
+        _videoPlayerController!.value.isInitialized) {
+      setState(() {
         _videoPlayerController!.value.isPlaying
             ? _videoPlayerController!.pause()
             : _videoPlayerController!.play();
+      });
+    }
+  }
+
+  void _onSeekStart(double value) {
+    _isDragging = true;
+    setState(() {
+      _dragValue = value;
+    });
+  }
+
+  void _onSeekChanged(double value) {
+    setState(() {
+      _dragValue = value;
+    });
+  }
+
+  void _onSeekEnd(double value) async {
+    final target = Duration(milliseconds: value.toInt());
+    setState(() {
+      _isDragging = false;
+      _dragValue = null;
+      _pendingSeekTarget = value;
+    });
+    if (_useVlcPlayer) {
+      if (_vlcPlayerController != null && _vlcPlayerController!.isAttached) {
+        await _vlcPlayerController!.seekTo(target);
+      }
+    } else if (_videoPlayerController != null &&
+        _videoPlayerController!.value.isInitialized) {
+      await _videoPlayerController!.seekTo(target);
+    }
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted && _pendingSeekTarget == value) {
+        setState(() {
+          _pendingSeekTarget = null;
+        });
       }
     });
   }
 
   void _seekTo(int milliseconds) {
     final target = Duration(milliseconds: milliseconds);
-    setState(() {
-      if (_useVlcPlayer && _vlcPlayerController != null) {
+    if (_useVlcPlayer) {
+      if (_vlcPlayerController != null && _vlcPlayerController!.isAttached) {
         _vlcPlayerController!.seekTo(target);
-      } else if (_videoPlayerController != null) {
-        _videoPlayerController!.seekTo(target);
       }
-    });
-  }
-
-  void _showIosWebmPopup() {
-    if (_dialogShown) return;
-    _dialogShown = true;
-
-    final parentContext = context;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: const Text("Video Format Notice"),
-          content: const Text(
-            "iOS can only play AV1/webm on iPhone 15 or later. You can choose to go back to the event for an MP4 link or launch the WebM video in an external app or browser.",
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: const Text("Back to Event"),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                if (parentContext.mounted) {
-                  GoRouter.of(parentContext).pop();
-                }
-              },
-            ),
-            ElevatedButton(
-              style: fosdemElevatedButtonStyle,
-              child: const Text(
-                "Launch External App",
-                style: TextStyle(color: fosdemColorButtonTekst),
-              ),
-              onPressed: () async {
-                Navigator.of(dialogContext).pop();
-                final uri = Uri.parse(widget.videoURL);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-                if (parentContext.mounted) {
-                  GoRouter.of(parentContext).pop();
-                }
-              },
-            ),
-          ],
-        );
-      },
-    );
+    } else if (_videoPlayerController != null &&
+        _videoPlayerController!.value.isInitialized) {
+      _videoPlayerController!.seekTo(target);
+    }
   }
 
   Future<void> _launchExternal() async {
-    final uri = Uri.parse(widget.videoURL);
+    final uri = Uri.parse(widget.videoURL.trim());
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -334,7 +352,7 @@ class _ViewVideoState extends State<ViewVideo> {
                               ],
                             ),
                           )
-                        : (_isInitialized
+                        : (_canRenderPlayer
                             ? Column(
                                 children: [
                                   Expanded(
@@ -342,53 +360,88 @@ class _ViewVideoState extends State<ViewVideo> {
                                       alignment: Alignment.center,
                                       children: [
                                         _buildVideoWidget(),
-                                        IconButton(
-                                          icon: Icon(
-                                            _isPlaying
-                                                ? Icons.pause
-                                                : Icons.play_arrow,
-                                            color: Colors.white,
-                                            size: 50.0,
+                                        if (!_isInitialized)
+                                          const Center(
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        else
+                                          IconButton(
+                                            icon: Icon(
+                                              _isPlaying
+                                                  ? Icons.pause
+                                                  : Icons.play_arrow,
+                                              color: Colors.white,
+                                              size: 50.0,
+                                            ),
+                                            onPressed: _togglePlayPause,
                                           ),
-                                          onPressed: _togglePlayPause,
-                                        ),
                                       ],
                                     ),
                                   ),
                                   const SizedBox(height: 8),
                                   // Slider / Scrollbar to position inside video
-                                  Slider(
-                                    value: _position.inMilliseconds
-                                        .toDouble()
+                                  Builder(builder: (context) {
+                                    final maxDurationMs =
+                                        _duration.inMilliseconds.toDouble();
+                                    final currentMs = (_dragValue ??
+                                            _pendingSeekTarget ??
+                                            _position.inMilliseconds.toDouble())
                                         .clamp(
                                           0.0,
-                                          _duration.inMilliseconds.toDouble() > 0
-                                              ? _duration.inMilliseconds.toDouble()
-                                              : 1.0,
-                                        ),
-                                    min: 0.0,
-                                    max: _duration.inMilliseconds.toDouble() > 0
-                                        ? _duration.inMilliseconds.toDouble()
-                                        : 1.0,
-                                    onChanged: (value) => _seekTo(value.toInt()),
-                                  ),
-                                  // Time played and total time underneath
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          maxDurationMs > 0 ? maxDurationMs : 1.0,
+                                        );
+                                    final canSeek =
+                                        _isInitialized && maxDurationMs > 0;
+                                    final displayedPosition = Duration(
+                                      milliseconds: currentMs.toInt(),
+                                    );
+
+                                    return Column(
                                       children: [
-                                        Text(
-                                          _formatDuration(_position),
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        Slider(
+                                          value: canSeek ? currentMs : 0.0,
+                                          min: 0.0,
+                                          max: maxDurationMs > 0
+                                              ? maxDurationMs
+                                              : 1.0,
+                                          onChangeStart:
+                                              canSeek ? _onSeekStart : null,
+                                          onChanged:
+                                              canSeek ? _onSeekChanged : null,
+                                          onChangeEnd:
+                                              canSeek ? _onSeekEnd : null,
                                         ),
-                                        Text(
-                                          _formatDuration(_duration),
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
+                                        // Time played and total time underneath
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16.0,
+                                          ),
+                                          child: Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Text(
+                                                _formatDuration(
+                                                  displayedPosition,
+                                                ),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              Text(
+                                                _formatDuration(_duration),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ],
-                                    ),
-                                  ),
+                                    );
+                                  }),
                                 ],
                               )
                             : const Center(
