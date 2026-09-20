@@ -29,9 +29,13 @@ class _ViewVideoState extends State<ViewVideo> {
   VlcPlayerController? _vlcPlayerController;
   bool _hasError = false;
   Timer? _timer;
+  Timer? _controlsTimer;
   double? _dragValue;
   double? _pendingSeekTarget;
   bool _isDragging = false;
+  bool _showControls = true;
+  bool _hasTriggeredInitialControlsHide = false;
+  final GlobalKey _vlcPlayerKey = GlobalKey();
 
   bool get _useVlcPlayer => !kIsWeb;
 
@@ -62,6 +66,10 @@ class _ViewVideoState extends State<ViewVideo> {
     }
     _timer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
       _checkPendingSeek();
+      if (!_hasTriggeredInitialControlsHide && _isPlaying) {
+        _hasTriggeredInitialControlsHide = true;
+        _resetControlsTimer();
+      }
       if (!_isDragging && _isPlaying) {
         if (mounted) {
           setState(() {});
@@ -188,26 +196,57 @@ class _ViewVideoState extends State<ViewVideo> {
     return 16.0 / 9.0;
   }
 
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+    });
+    if (_showControls && _isPlaying) {
+      _resetControlsTimer();
+    }
+  }
+
+  void _resetControlsTimer() {
+    _controlsTimer?.cancel();
+    _controlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _isPlaying && !_isDragging) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
   void _togglePlayPause() {
     if (_useVlcPlayer) {
       if (_vlcPlayerController != null && _vlcPlayerController!.isAttached) {
         setState(() {
-          _isPlaying
-              ? _vlcPlayerController!.pause()
-              : _vlcPlayerController!.play();
+          if (_isPlaying) {
+            _vlcPlayerController!.pause();
+            _showControls = true;
+            _controlsTimer?.cancel();
+          } else {
+            _vlcPlayerController!.play();
+            _resetControlsTimer();
+          }
         });
       }
     } else if (_videoPlayerController != null &&
         _videoPlayerController!.value.isInitialized) {
       setState(() {
-        _videoPlayerController!.value.isPlaying
-            ? _videoPlayerController!.pause()
-            : _videoPlayerController!.play();
+        if (_videoPlayerController!.value.isPlaying) {
+          _videoPlayerController!.pause();
+          _showControls = true;
+          _controlsTimer?.cancel();
+        } else {
+          _videoPlayerController!.play();
+          _resetControlsTimer();
+        }
       });
     }
   }
 
   void _onSeekStart(double value) {
+    _controlsTimer?.cancel();
     _isDragging = true;
     setState(() {
       _dragValue = value;
@@ -227,6 +266,7 @@ class _ViewVideoState extends State<ViewVideo> {
       _dragValue = null;
       _pendingSeekTarget = value;
     });
+    _resetControlsTimer();
     if (_useVlcPlayer) {
       if (_vlcPlayerController != null && _vlcPlayerController!.isAttached) {
         await _vlcPlayerController!.seekTo(target);
@@ -279,6 +319,7 @@ class _ViewVideoState extends State<ViewVideo> {
       return AspectRatio(
         aspectRatio: _aspectRatio,
         child: VlcPlayer(
+          key: _vlcPlayerKey,
           controller: _vlcPlayerController!,
           fit: VlcVideoFit.contain,
         ),
@@ -290,167 +331,234 @@ class _ViewVideoState extends State<ViewVideo> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    double aheight = MediaQuery.of(context).size.height;
-    double awidth = MediaQuery.of(context).size.width;
-    if (MediaQuery.of(context).orientation == Orientation.landscape) {
-      aheight = MediaQuery.of(context).size.height * 11 / 13.0;
-    } else {
-      aheight = MediaQuery.of(context).size.width * 9.0 / 16.0;
-    }
-    return SafeArea(
-      child: Scaffold(
-        body: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
+  Widget _buildBackButton() {
+    return ElevatedButton(
+      style: fosdemElevatedButtonStyle,
+      onPressed: _goback,
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.arrow_back_outlined, color: fosdemColorButtonTekst),
+          SizedBox(width: 4),
+          Text(
+            "Back",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: fosdemColorButtonTekst),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text(
+          "Failed to load video format on this device.",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 14),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton(
+          style: fosdemElevatedButtonStyle,
+          onPressed: _launchExternal,
+          child: const Text(
+            "Open Video Externally",
+            style: TextStyle(color: fosdemColorButtonTekst),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildControls({bool isDarkOverlay = false}) {
+    final textColor = isDarkOverlay ? Colors.white : null;
+    return Builder(builder: (context) {
+      final maxDurationMs = _duration.inMilliseconds.toDouble();
+      final currentMs = (_dragValue ??
+              _pendingSeekTarget ??
+              _position.inMilliseconds.toDouble())
+          .clamp(
+        0.0,
+        maxDurationMs > 0 ? maxDurationMs : 1.0,
+      );
+      final canSeek = _isInitialized && maxDurationMs > 0;
+      final displayedPosition = Duration(
+        milliseconds: currentMs.toInt(),
+      );
+
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Slider(
+            value: canSeek ? currentMs : 0.0,
+            min: 0.0,
+            max: maxDurationMs > 0 ? maxDurationMs : 1.0,
+            onChangeStart: canSeek ? _onSeekStart : null,
+            onChanged: canSeek ? _onSeekChanged : null,
+            onChangeEnd: canSeek ? _onSeekEnd : null,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                ElevatedButton(
-                  style: fosdemElevatedButtonStyle,
-                  child: const Row(
-                    children: [
-                      Icon(Icons.arrow_back_outlined, color: fosdemColorButtonTekst),
-                      Text(
-                        "Back",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: fosdemColorButtonTekst),
-                      ),
-                    ],
+                Text(
+                  _formatDuration(displayedPosition),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
                   ),
-                  onPressed: () => _goback(),
+                ),
+                Text(
+                  _formatDuration(_duration),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                  ),
                 ),
               ],
             ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(6),
-                children: [
-                  SizedBox(
-                    width: awidth,
-                    height: aheight + 80, // Extra height for slider and time labels
-                    child: _hasError
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Text(
-                                  "Failed to load video format on this device.",
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 14),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  style: fosdemElevatedButtonStyle,
-                                  onPressed: _launchExternal,
-                                  child: const Text(
-                                    "Open Video Externally",
-                                    style: TextStyle(color: fosdemColorButtonTekst),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : (_canRenderPlayer
-                            ? Column(
-                                children: [
-                                  Expanded(
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        _buildVideoWidget(),
-                                        if (!_isInitialized)
-                                          const Center(
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                            ),
-                                          )
-                                        else
-                                          IconButton(
-                                            icon: Icon(
-                                              _isPlaying
-                                                  ? Icons.pause
-                                                  : Icons.play_arrow,
-                                              color: Colors.white,
-                                              size: 50.0,
-                                            ),
-                                            onPressed: _togglePlayPause,
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  // Slider / Scrollbar to position inside video
-                                  Builder(builder: (context) {
-                                    final maxDurationMs =
-                                        _duration.inMilliseconds.toDouble();
-                                    final currentMs = (_dragValue ??
-                                            _pendingSeekTarget ??
-                                            _position.inMilliseconds.toDouble())
-                                        .clamp(
-                                          0.0,
-                                          maxDurationMs > 0 ? maxDurationMs : 1.0,
-                                        );
-                                    final canSeek =
-                                        _isInitialized && maxDurationMs > 0;
-                                    final displayedPosition = Duration(
-                                      milliseconds: currentMs.toInt(),
-                                    );
+          ),
+        ],
+      );
+    });
+  }
 
-                                    return Column(
-                                      children: [
-                                        Slider(
-                                          value: canSeek ? currentMs : 0.0,
-                                          min: 0.0,
-                                          max: maxDurationMs > 0
-                                              ? maxDurationMs
-                                              : 1.0,
-                                          onChangeStart:
-                                              canSeek ? _onSeekStart : null,
-                                          onChanged:
-                                              canSeek ? _onSeekChanged : null,
-                                          onChangeEnd:
-                                              canSeek ? _onSeekEnd : null,
-                                        ),
-                                        // Time played and total time underneath
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 16.0,
-                                          ),
-                                          child: Row(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Text(
-                                                _formatDuration(
-                                                  displayedPosition,
-                                                ),
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              Text(
-                                                _formatDuration(_duration),
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    );
-                                  }),
-                                ],
-                              )
+  @override
+  Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    return Scaffold(
+      backgroundColor: isLandscape ? Colors.black : null,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top back button row in portrait; zero height in landscape
+            if (isLandscape)
+              const SizedBox.shrink()
+            else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildBackButton(),
+                ],
+              ),
+
+            // Video + controls stack: same widget element path in both portrait and landscape
+            Expanded(
+              key: const ValueKey('video_expanded_container'),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Full video widget (base layer)
+                  Center(
+                    child: _hasError
+                        ? _buildErrorWidget()
+                        : (_canRenderPlayer
+                            ? _buildVideoWidget()
                             : const Center(
                                 child: CircularProgressIndicator(),
                               )),
                   ),
+
+                  // Tap overlay on top of the native video view
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _toggleControls,
+                    ),
+                  ),
+
+                  // Center Play/Pause button
+                  if (_canRenderPlayer && !_hasError)
+                    AnimatedOpacity(
+                      opacity:
+                          _showControls || !_isPlaying || _hasError ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 250),
+                      child: IgnorePointer(
+                        ignoring: !_showControls && _isPlaying && !_hasError,
+                        child: Center(
+                          child: !_isInitialized
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
+                              : Container(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black45,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: IconButton(
+                                    iconSize: 56.0,
+                                    icon: Icon(
+                                      _isPlaying
+                                          ? Icons.pause
+                                          : Icons.play_arrow,
+                                      color: Colors.white,
+                                    ),
+                                    onPressed: _togglePlayPause,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ),
+
+                  // Overlaid Back Button in Landscape (Top-Left)
+                  if (isLandscape)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: _buildBackButton(),
+                    ),
+
+                  // Overlaid Seekbar & Timestamp in Landscape (Bottom)
+                  if (isLandscape && _canRenderPlayer && !_hasError)
+                    Positioned(
+                      left: 12,
+                      right: 12,
+                      bottom: 8,
+                      child: AnimatedOpacity(
+                        opacity: _showControls || !_isPlaying || _hasError
+                            ? 1.0
+                            : 0.0,
+                        duration: const Duration(milliseconds: 250),
+                        child: IgnorePointer(
+                          ignoring: !_showControls && _isPlaying && !_hasError,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: _buildControls(isDarkOverlay: true),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
+
+            // Bottom controls in portrait; zero height in landscape
+            if (isLandscape)
+              const SizedBox.shrink()
+            else if (_canRenderPlayer && !_hasError)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6.0,
+                  vertical: 8.0,
+                ),
+                child: _buildControls(),
+              )
+            else
+              const SizedBox.shrink(),
           ],
         ),
       ),
@@ -460,6 +568,7 @@ class _ViewVideoState extends State<ViewVideo> {
   @override
   void dispose() {
     _timer?.cancel();
+    _controlsTimer?.cancel();
     _videoPlayerController?.dispose();
     _vlcPlayerController?.dispose();
     super.dispose();
